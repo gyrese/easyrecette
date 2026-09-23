@@ -1,0 +1,683 @@
+
+a{color:#D6461F;text-decoration:none}a:hover{color:#17140F}
+*{box-sizing:border-box}
+::selection{background:#D8F250}
+@keyframes er-in{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes er-tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes er-scan{0%{transform:translateY(-120%)}100%{transform:translateY(520%)}}
+@keyframes er-blink{0%,45%{opacity:1}50%,95%{opacity:.15}}
+@keyframes er-pop{0%{transform:scale(.5) rotate(-12deg)}62%{transform:scale(1.16) rotate(4deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes er-drift{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(2%,-4%,0) scale(1.06)}}
+@keyframes er-stamp{0%,100%{transform:rotate(-8deg) scale(1)}50%{transform:rotate(-5deg) scale(1.04)}}
+@keyframes er-sheen{0%{transform:translateX(-140%)}60%,100%{transform:translateX(260%)}}
+</style>
+</helmet>
+
+<div style="position:relative;min-height:100vh;background:#F2EDE3;overflow-x:clip">
+
+  <div style="position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(23,20,15,.045) 1px,transparent 1px);background-size:100% 34px"></div>
+  <div style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:-18%;right:-10%;width:52vw;height:52vw;border-radius:50%;background:radial-gradient(circle,rgba(214,70,31,.17),transparent 68%);filter:blur(24px);animation:er-drift 22s ease-in-out infinite"></div>
+    <div style="position:absolute;bottom:-24%;left:-12%;width:46vw;height:46vw;border-radius:50%;background:radial-gradient(circle,rgba(216,242,80,.26),transparent 68%);filter:blur(28px);animation:er-drift 28s ease-in-out infinite reverse"></div>
+  </div>
+  <div style="position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.055;mix-blend-mode:multiply;background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNDAnIGhlaWdodD0nMTQwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nLjknIG51bU9jdGF2ZXM9JzMnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTQwJyBoZWlnaHQ9JzE0MCcgZmlsdGVyPSd1cmwoI24pJy8+PC9zdmc+)"></div>
+
+  <div style="position:relative;z-index:40;overflow:hidden;background:#17140F;color:#F2EDE3">
+    <div style="display:flex;width:max-content;animation:er-tick 34s linear infinite;font:400 11px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;padding:9px 0">
+      <span style="display:flex;gap:34px;padding-right:34px;white-space:nowrap"><span>Extraction IA · 4 s</span><span style="color:#D8F250">·</span><span>64 fiches classées</span><span style="color:#D8F250">·</span><span>Portions recalculées en direct</span><span style="color:#D8F250">·</span><span>Liste de courses fusionnée</span><span style="color:#D8F250">·</span><span>Minuteurs par étape</span><span style="color:#D8F250">·</span></span>
+      <span style="display:flex;gap:34px;padding-right:34px;white-space:nowrap"><span>Extraction IA · 4 s</span><span style="color:#D8F250">·</span><span>64 fiches classées</span><span style="color:#D8F250">·</span><span>Portions recalculées en direct</span><span style="color:#D8F250">·</span><span>Liste de courses fusionnée</span><span style="color:#D8F250">·</span><span>Minuteurs par étape</span><span style="color:#D8F250">·</span></span>
+    </div>
+  </div>
+
+  <div style="position:sticky;top:0;z-index:45;background:rgba(242,237,227,.82);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border-bottom:1.5px solid #17140F">
+    <div style="max-width:1320px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:9px;margin-right:6px">
+        <span style="font-family:'Instrument Serif',serif;font-size:27px;letter-spacing:-.02em;line-height:1">EasyRecette</span>
+        <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Éd. 26</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;border:1.5px solid #17140F;border-radius:2px;overflow:hidden">
+        <button sc-camel-on-click="{{ goHome }}" style="{{ navHome }}">Accueil</button>
+        <button sc-camel-on-click="{{ goLib }}" style="{{ navLib }}">Bibliothèque</button>
+        <button sc-camel-on-click="{{ goStudio }}" style="{{ navStudio }}">Studio</button>
+        <button sc-camel-on-click="{{ goGrocery }}" style="{{ navGrocery }}">Épicerie</button>
+      </div>
+      <div style="flex:1;min-width:8px"></div>
+      <button sc-camel-on-click="{{ goHome }}" style="position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;padding:11px 18px;border:1.5px solid #17140F;border-radius:2px;background:#D8F250;color:#17140F;font:500 11px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 #17140F;transition:transform .18s,box-shadow .18s" style-hover="transform:translate(-1.5px,-1.5px);box-shadow:5px 5px 0 #17140F" style-active="transform:translate(2px,2px);box-shadow:0 0 0 #17140F" style-before="content:'';position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(-140%);animation:er-sheen 4.2s ease-in-out infinite">
+        + Nouvelle fiche
+      </button>
+    </div>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative;z-index:10;max-width:1320px;margin:0 auto;padding:54px 24px 110px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:40px;align-items:end">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;font:400 10.5px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(23,20,15,.5);animation:er-in .8s cubic-bezier(.16,1,.3,1) both">
+            <span style="width:34px;height:1.5px;background:#D6461F"></span>Vidéo → fiche imprimable
+          </div>
+          <h1 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(46px,7.6vw,104px);line-height:.88;letter-spacing:-.04em;margin:20px 0 0">
+            <span style="display:block;animation:er-in .9s cubic-bezier(.16,1,.3,1) .06s both">Toute vidéo</span>
+            <span style="display:block;animation:er-in .9s cubic-bezier(.16,1,.3,1) .14s both">devient une</span>
+            <span style="display:block;animation:er-in .9s cubic-bezier(.16,1,.3,1) .22s both"><span style="position:relative;display:inline-block;font-style:italic"><span style="position:relative;z-index:2">fiche cuisine</span><span style="position:absolute;z-index:1;left:-.06em;right:-.06em;bottom:.14em;height:.34em;background:#D8F250"></span></span></span>
+          </h1>
+          <p style="margin:26px 0 0;max-width:430px;font:300 16px/1.6 'Bricolage Grotesque',sans-serif;color:rgba(23,20,15,.62)">
+            Collez une URL. EasyRecette lit la vidéo, isole les ingrédients, ajuste les portions et imprime votre plan de cuisson.
+          </p>
+        </div>
+
+        <div ref="{{ glow }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#17140F;color:#F2EDE3;padding:22px;box-shadow:9px 9px 0 rgba(23,20,15,.14);animation:er-in 1s cubic-bezier(.16,1,.3,1) .28s both">
+          <div style="position:absolute;inset:0;border-radius:3px;pointer-events:none;background:radial-gradient(420px circle at var(--mx,70%) var(--my,10%),rgba(216,242,80,.14),transparent 62%)"></div>
+          <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;font:400 10px 'DM Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:rgba(242,237,227,.5)">
+            <span>Console d’import</span><span>{{ hudStatus }}</span>
+          </div>
+          <div style="position:relative;margin-top:16px;display:flex;align-items:center;gap:10px;padding:0 4px 0 14px;height:56px;border:1.5px solid rgba(242,237,227,.28);border-radius:2px;background:rgba(242,237,227,.05)">
+            <span style="font:400 13px 'DM Mono',monospace;color:#D8F250;animation:er-blink 1.4s steps(1) infinite">▌</span>
+            <input value="{{ url }}" sc-camel-on-change="{{ setUrl }}" placeholder="coller un lien tiktok / instagram / youtube…" style="flex:1;min-width:0;border:none;outline:none;background:transparent;font:400 13px 'DM Mono',monospace;color:#F2EDE3">
+            <button sc-camel-on-click="{{ pasteDemo }}" style="flex:none;padding:8px 12px;border:1.5px solid rgba(242,237,227,.3);border-radius:2px;background:transparent;font:400 10px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,237,227,.65);cursor:pointer;transition:.2s" style-hover="background:#D8F250;color:#17140F;border-color:#D8F250">⌘V</button>
+          </div>
+          <button sc-camel-on-click="{{ startImport }}" style="position:relative;overflow:hidden;margin-top:12px;width:100%;padding:17px;border:1.5px solid #D6461F;border-radius:2px;background:#D6461F;color:#F7F2E8;font:500 12px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:.2s" style-hover="background:#F2EDE3;color:#17140F;border-color:#F2EDE3" style-before="content:'';position:absolute;top:0;left:0;width:38%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:translateX(-140%);animation:er-sheen 3.4s ease-in-out infinite">
+            Extraire la recette →
+          </button>
+
+          <sc-if value="{{ showHud }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;overflow:hidden;margin-top:18px;padding-top:16px;border-top:1.5px dashed rgba(242,237,227,.22)">
+              <div style="{{ scanline }}"></div>
+              <div style="position:relative;display:flex;flex-direction:column;gap:9px">
+                <div style="{{ hud1 }}"><span style="{{ hudDot1 }}"></span>01 · lien analysé</div>
+                <div style="{{ hud2 }}"><span style="{{ hudDot2 }}"></span>02 · extraction des ingrédients</div>
+                <div style="{{ hud3 }}"><span style="{{ hudDot3 }}"></span>03 · calcul des portions</div>
+              </div>
+              <div style="position:relative;margin-top:14px;height:2px;background:rgba(242,237,227,.14);overflow:hidden"><div style="{{ hudBar }}"></div></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ importDone }}" hint-placeholder-val="{{ false }}">
+            <button sc-camel-on-click="{{ goStudio }}" style="margin-top:14px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1.5px solid #D8F250;border-radius:2px;background:rgba(216,242,80,.12);color:#D8F250;font:400 11px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-align:left;animation:er-in .5s cubic-bezier(.16,1,.3,1) both">
+              <span>Gnocchi ricotta · 12 ingr. · 7 étapes</span><span>Ouvrir ↗</span>
+            </button>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="margin-top:78px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1.5px solid #17140F">
+        <div>
+          <div style="font:400 10px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(23,20,15,.45)">Importées récemment</div>
+          <h2 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(32px,4.6vw,52px);letter-spacing:-.035em;margin:8px 0 0;line-height:.92">Nouvelles fiches</h2>
+        </div>
+        <button sc-camel-on-click="{{ goLib }}" style="padding:11px 16px;border:1.5px solid #17140F;border-radius:2px;background:transparent;font:500 10.5px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.2s" style-hover="background:#17140F;color:#F2EDE3">Toute la bibliothèque →</button>
+      </div>
+      <div ref="{{ reveal }}" data-stagger="1" style="margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:26px;align-items:start">
+        <div ref="{{ fiche }}" data-rot="-1.4" sc-camel-on-click="{{ goStudio }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(-1.4deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <span style="position:absolute;z-index:3;top:7px;right:30px;padding:3px 7px;border:1.5px solid #17140F;background:#D8F250;font:500 8.5px 'DM Mono',monospace;letter-spacing:.18em;pointer-events:none">NOUVEAU</span>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-new1" shape="rect" placeholder="Photo — shakshuka aux poivrons"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#F2EDE3;color:#17140F;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">25 MIN</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Brunch · Poêle</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">64</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Shakshuka, poivrons &amp; feta</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>TikTok</span><span>@chef_artisan</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+        <div ref="{{ fiche }}" data-rot="1" sc-camel-on-click="{{ goStudio }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(1deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <span style="position:absolute;z-index:3;top:7px;right:30px;padding:3px 7px;border:1.5px solid #17140F;background:#D8F250;font:500 8.5px 'DM Mono',monospace;letter-spacing:.18em;pointer-events:none">NOUVEAU</span>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-new2" shape="rect" placeholder="Photo — bowl de saumon miso"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#D6461F;color:#F7F2E8;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">20 MIN</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Plat · Protéines</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">63</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Bowl saumon miso &amp; sésame</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>Instagram</span><span>@umami.home</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+        <div ref="{{ fiche }}" data-rot="-0.7" sc-camel-on-click="{{ goStudio }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(-0.7deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <span style="position:absolute;z-index:3;top:7px;right:30px;padding:3px 7px;border:1.5px solid #17140F;background:#D8F250;font:500 8.5px 'DM Mono',monospace;letter-spacing:.18em;pointer-events:none">NOUVEAU</span>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-new3" shape="rect" placeholder="Photo — focaccia aux tomates"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#F2EDE3;color:#17140F;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">3 H</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Boulange · Four</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">62</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Focaccia, tomates cerises &amp; origan</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>YouTube</span><span>Atelier Marceau</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+        <div ref="{{ fiche }}" data-rot="1.3" sc-camel-on-click="{{ goStudio }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(1.3deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <span style="position:absolute;z-index:3;top:7px;right:30px;padding:3px 7px;border:1.5px solid #17140F;background:#D8F250;font:500 8.5px 'DM Mono',monospace;letter-spacing:.18em;pointer-events:none">NOUVEAU</span>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-new4" shape="rect" placeholder="Photo — cookies beurre noisette"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#F2EDE3;color:#17140F;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">35 MIN</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Dessert · Four</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">61</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Cookies au beurre noisette</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>Blog</span><span>Le Pétrin Clair</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isLib }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;z-index:10;max-width:1320px;margin:0 auto;padding:44px 24px 120px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:22px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1.5px solid #17140F;animation:er-in .8s cubic-bezier(.16,1,.3,1) both">
+        <div>
+          <div style="font:400 10px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(23,20,15,.45)">Fichier · 64 fiches · 12 nouvelles</div>
+          <h2 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(38px,6.4vw,74px);letter-spacing:-.04em;margin:10px 0 0;line-height:.9">Bibliothèque</h2>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button sc-camel-on-click="{{ setFilterAll }}" style="{{ fTous }}">Tout</button>
+          <button sc-camel-on-click="{{ setFilterQuick }}" style="{{ fQuick }}">Rapides</button>
+          <button sc-camel-on-click="{{ setFilterProt }}" style="{{ fProt }}">Protéines</button>
+          <button sc-camel-on-click="{{ setFilterDess }}" style="{{ fDess }}">Desserts</button>
+          <button sc-camel-on-click="{{ setFilterBake }}" style="{{ fBake }}">Boulange</button>
+          <button sc-camel-on-click="{{ setFilterVeg }}" style="{{ fVeg }}">Végétarien</button>
+        </div>
+      </div>
+
+      <div ref="{{ reveal }}" style="margin-top:34px;perspective:1600px">
+        <div ref="{{ tilt }}" sc-camel-on-click="{{ goStudio }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#17140F;cursor:pointer;box-shadow:10px 10px 0 rgba(23,20,15,.16);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;transform-style:preserve-3d" style-hover="box-shadow:18px 18px 0 rgba(23,20,15,.2);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:-13px;left:26px;display:flex;gap:6px;pointer-events:none">
+            <span style="padding:6px 13px;border:1.5px solid #17140F;border-radius:2px;background:#D8F250;font:500 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase">À la une</span>
+            <span style="padding:6px 13px;border:1.5px solid #17140F;border-radius:2px;background:#F2EDE3;font:500 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase">Végétarien</span>
+          </div>
+          <div style="position:relative;overflow:hidden;width:100%;aspect-ratio:2/1;min-height:300px;background:#221D17">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .045))">
+              <image-slot id="er-hero" shape="rect" placeholder="Photo — gnocchi de ricotta"></image-slot>
+            </div>
+            <div style="position:absolute;inset:0;background:linear-gradient(100deg,rgba(23,20,15,.94) 2%,rgba(23,20,15,.6) 38%,rgba(23,20,15,.04) 70%);pointer-events:none"></div>
+            <div style="position:absolute;inset:0;padding:clamp(24px,3.4vw,44px);display:flex;flex-direction:column;justify-content:flex-end;color:#F2EDE3;pointer-events:none">
+              <div style="font:400 10px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(242,237,227,.55)">Fiche n° 064 · TikTok · @chef_artisan</div>
+              <div style="margin-top:14px;font-family:'Instrument Serif',serif;font-size:clamp(32px,5.2vw,62px);line-height:.94;letter-spacing:-.035em;max-width:620px">Gnocchi de ricotta,<br><span style="font-style:italic">beurre noisette</span> &amp; sauge</div>
+              <div style="margin-top:20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;font:400 10.5px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,237,227,.72)">
+                <span>28 min</span><span style="color:#D8F250">/</span><span>Facile</span><span style="color:#D8F250">/</span><span>486 kcal</span>
+                <span style="padding:10px 18px;border:1.5px solid #D8F250;border-radius:2px;background:#D8F250;color:#17140F;opacity:var(--er-reveal,0);transform:translateY(calc(8px - var(--er-reveal,0) * 8px));transition:.35s cubic-bezier(.16,1,.3,1)">Cuisiner ▶</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div ref="{{ reveal }}" data-stagger="1" style="margin-top:44px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:26px;align-items:start">
+
+        <div ref="{{ fiche }}" data-rot="-1.6" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(-1.6deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-c2" shape="rect" placeholder="Photo — tarte fine aux figues"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#F2EDE3;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">55 MIN</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Dessert · Four</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">61</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Tarte fine aux figues &amp; romarin</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>Instagram</span><span>@maison.douce</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+
+        <div ref="{{ fiche }}" data-rot="1.1" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(1.1deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-c3" shape="rect" placeholder="Photo — poulet rôti au citron"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#D6461F;color:#F7F2E8;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">1 H 10</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Plat · 210 °C</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">58</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Poulet rôti, citron confit &amp; thym</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>YouTube</span><span>Atelier Marceau</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+
+        <div style="position:relative;overflow:hidden;border:1.5px solid #17140F;border-radius:3px;background:#17140F;color:#F2EDE3;min-height:330px;display:flex;flex-direction:column;justify-content:space-between;padding:22px;box-shadow:7px 7px 0 rgba(23,20,15,.14)">
+          <div style="position:absolute;top:-35%;right:-30%;width:90%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(216,242,80,.32),transparent 66%);filter:blur(8px);animation:er-drift 17s ease-in-out infinite"></div>
+          <div style="position:relative">
+            <div style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(242,237,227,.5)">Menu · Mercredi</div>
+            <div style="margin-top:16px;font-family:'Instrument Serif',serif;font-size:34px;line-height:.96;letter-spacing:-.03em">Trois recettes,<br>une seule liste</div>
+            <p style="margin:14px 0 0;font:300 13px/1.55 'Bricolage Grotesque',sans-serif;color:rgba(242,237,227,.6)">Doublons fusionnés, rayons regroupés, 42 min de cuisson cumulée.</p>
+          </div>
+          <button sc-camel-on-click="{{ goGrocery }}" style="position:relative;margin-top:20px;align-self:flex-start;padding:12px 18px;border:1.5px solid #D8F250;border-radius:2px;background:transparent;color:#D8F250;font:500 10.5px 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:.22s" style-hover="background:#D8F250;color:#17140F">Voir la liste ↗</button>
+        </div>
+
+        <div ref="{{ fiche }}" data-rot="-0.8" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);transform:rotate(-0.8deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);cursor:pointer" style-hover="box-shadow:14px 14px 0 rgba(23,20,15,.18);--er-reveal:1">
+          <div style="position:absolute;z-index:3;top:11px;left:13px;width:9px;height:9px;border:1.5px solid #17140F;border-radius:50%;background:#F2EDE3;pointer-events:none"></div>
+          <div style="position:relative;overflow:hidden;margin:26px 13px 0;border:1.5px solid #17140F;aspect-ratio:4/3;background:#E4DCCD">
+            <div style="position:absolute;inset:0;transition:transform .8s cubic-bezier(.16,1,.3,1);transform:scale(calc(1 + var(--er-reveal,0) * .06))">
+              <image-slot id="er-c4" shape="rect" placeholder="Photo — pavlova aux fruits rouges"></image-slot>
+            </div>
+            <span style="position:absolute;top:8px;right:8px;padding:5px 9px;border:1.5px solid #17140F;background:#F2EDE3;font:500 9px 'DM Mono',monospace;letter-spacing:.16em">2 H</span>
+          </div>
+          <div style="padding:16px 15px 0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <span style="font:400 9.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:rgba(23,20,15,.45)">Dessert · Froid</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1;color:rgba(23,20,15,.24)">52</span>
+            </div>
+            <div style="margin-top:8px;font-family:'Instrument Serif',serif;font-size:25px;line-height:1.02;letter-spacing:-.025em">Pavlova, fruits rouges &amp; verveine</div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px dashed rgba(23,20,15,.26);display:flex;align-items:center;justify-content:space-between;gap:10px;font:400 10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(23,20,15,.55)">
+              <span>Blog</span><span>Le Pétrin Clair</span>
+            </div>
+          </div>
+          <div style="height:22px;margin-top:6px;background-image:radial-gradient(circle at 9px 0,#F2EDE3 6.5px,transparent 7px);background-size:18px 22px;background-repeat:repeat-x;background-position:0 12px"></div>
+        </div>
+
+        <div sc-camel-on-click="{{ goHome }}" style="border:1.5px dashed rgba(23,20,15,.4);border-radius:3px;background:transparent;min-height:330px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;cursor:pointer;transition:.3s" style-hover="border-color:#D6461F;background:rgba(214,70,31,.05)">
+          <div style="width:46px;height:46px;border:1.5px solid #17140F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:26px">+</div>
+          <div style="font:500 10.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase">Nouvelle fiche</div>
+          <div style="font:300 12.5px/1.5 'Bricolage Grotesque',sans-serif;color:rgba(23,20,15,.55);max-width:190px">Un lien, une vidéo ou la photo d’une page de livre.</div>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStudio }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;z-index:10;max-width:1320px;margin:0 auto;padding:30px 24px 120px">
+      <div style="position:relative;border:1.5px solid #17140F;border-radius:3px;overflow:hidden;background:#221D17;min-height:420px;box-shadow:10px 10px 0 rgba(23,20,15,.16);animation:er-in .9s cubic-bezier(.16,1,.3,1) both">
+        <image-slot id="er-studio-hero" shape="rect" placeholder="Photo cinématique — gnocchi dorés au beurre noisette"></image-slot>
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(23,20,15,.95) 4%,rgba(23,20,15,.4) 52%,rgba(23,20,15,.05));pointer-events:none"></div>
+        <div style="position:absolute;z-index:3;top:clamp(20px,3vw,34px);right:clamp(20px,3vw,34px);width:108px;height:108px;border:1.5px solid #D8F250;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#D8F250;text-align:center;animation:er-stamp 6s ease-in-out infinite;pointer-events:none">
+          <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1">28</span>
+          <span style="font:500 8.5px 'DM Mono',monospace;letter-spacing:.2em">MINUTES</span>
+          <span style="width:26px;height:1px;background:#D8F250;margin:3px 0"></span>
+          <span style="font:500 8.5px 'DM Mono',monospace;letter-spacing:.2em">FACILE</span>
+        </div>
+        <div style="position:relative;padding:clamp(26px,4vw,48px);min-height:420px;display:flex;flex-direction:column;justify-content:flex-end;color:#F2EDE3;pointer-events:none">
+          <div style="font:400 10px 'DM Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(242,237,227,.55)">Fiche n° 064 · TikTok · @chef_artisan · Végétarien</div>
+          <h2 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(38px,6.6vw,80px);line-height:.9;letter-spacing:-.04em;margin:16px 0 0;max-width:760px">Gnocchi de ricotta,<br><span style="font-style:italic">beurre noisette</span> &amp; sauge</h2>
+          <div style="margin-top:24px;display:flex;gap:26px;flex-wrap:wrap;font:400 10.5px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,237,227,.7)">
+            <span>Prép. 20 min</span><span style="color:#D8F250">/</span><span>Cuisson 8 min</span><span style="color:#D8F250">/</span><span>{{ kcal }} kcal/pers.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:sticky;top:62px;z-index:20;margin-top:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 14px;border:1.5px solid #17140F;border-radius:3px;background:rgba(247,243,234,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:5px 5px 0 rgba(23,20,15,.12)">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;border:1.5px solid #17140F;border-radius:2px;overflow:hidden">
+            <button sc-camel-on-click="{{ dec }}" style="width:40px;height:38px;border:none;border-right:1.5px solid #17140F;background:transparent;font-size:17px;cursor:pointer;transition:.18s" style-hover="background:#D8F250">−</button>
+            <span style="min-width:116px;text-align:center;font:500 11px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase">{{ servings }} portions</span>
+            <button sc-camel-on-click="{{ inc }}" style="width:40px;height:38px;border:none;border-left:1.5px solid #17140F;background:transparent;font-size:17px;cursor:pointer;transition:.18s" style-hover="background:#D8F250">+</button>
+          </div>
+          <span style="font:400 10px 'DM Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(23,20,15,.45)">recalcul en direct</span>
+        </div>
+        <button sc-camel-on-click="{{ goCook }}" style="padding:13px 22px;border:1.5px solid #17140F;border-radius:2px;background:#D6461F;color:#F7F2E8;font:500 11px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 #17140F;transition:transform .18s,box-shadow .18s" style-hover="transform:translate(-1.5px,-1.5px);box-shadow:5px 5px 0 #17140F" style-active="transform:translate(2px,2px);box-shadow:0 0 0 #17140F">Mode cuisine ▶</button>
+      </div>
+
+      <div style="margin-top:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:26px;align-items:start">
+
+        <div ref="{{ reveal }}" style="position:relative;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;padding:26px 24px;box-shadow:7px 7px 0 rgba(23,20,15,.14)">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1.5px solid #17140F">
+            <h3 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-.03em;line-height:1">Ingrédients</h3>
+            <span style="font:500 10px 'DM Mono',monospace;letter-spacing:.14em;color:rgba(23,20,15,.5)">{{ checkedCount }}/12</span>
+          </div>
+          <div style="margin-top:12px;height:3px;background:rgba(23,20,15,.1);overflow:hidden"><div style="{{ checkBar }}"></div></div>
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="margin-top:24px">
+              <div style="font:500 9.5px 'DM Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#D6461F;margin-bottom:6px">{{ g.name }}</div>
+              <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                <div sc-camel-on-click="{{ it.toggle }}" style="display:flex;align-items:baseline;gap:10px;padding:9px 4px;border-bottom:1px dotted rgba(23,20,15,.28);cursor:pointer;transition:background .18s,padding-left .2s" style-hover="background:rgba(216,242,80,.24);padding-left:9px">
+                  <span style="{{ it.dot }}">{{ it.mark }}</span>
+                  <span style="{{ it.label }}">{{ it.name }}</span>
+                  <span style="{{ it.qtyStyle }}">{{ it.qty }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <button style="margin-top:26px;width:100%;padding:15px;border:1.5px solid #17140F;border-radius:2px;background:#D8F250;font:500 11px 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 #17140F;transition:transform .18s,box-shadow .18s" style-hover="transform:translate(-1.5px,-1.5px);box-shadow:5px 5px 0 #17140F" style-active="transform:translate(2px,2px);box-shadow:0 0 0 #17140F">Envoyer aux courses →</button>
+        </div>
+
+        <div ref="{{ reveal }}" data-stagger="1" style="display:flex;flex-direction:column;gap:0;border:1.5px solid #17140F;border-radius:3px;background:#F7F3EA;box-shadow:7px 7px 0 rgba(23,20,15,.14);overflow:hidden">
+          <div style="padding:26px 24px 14px;border-bottom:1.5px solid #17140F">
+            <h3 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-.03em;line-height:1">Méthode</h3>
+          </div>
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="7">
+            <div style="display:flex;gap:18px;padding:22px 24px;border-bottom:1px solid rgba(23,20,15,.14);transition:background .25s" style-hover="background:rgba(216,242,80,.16)">
+              <div style="flex:none;width:44px;font-family:'Instrument Serif',serif;font-size:42px;line-height:.8;letter-spacing:-.04em;color:rgba(23,20,15,.26)">{{ s.n }}</div>
+              <div style="flex:1;min-width:0">
+                <p style="margin:0;font:300 15px/1.62 'Bricolage Grotesque',sans-serif;color:rgba(23,20,15,.86);text-wrap:pretty">{{ s.text }}</p>
+                <sc-if value="{{ s.hasTimer }}" hint-placeholder-val="{{ false }}">
+                  <button sc-camel-on-click="{{ s.startTimer }}" style="{{ s.chipStyle }}">{{ s.chipLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ s.hasTip }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;display:flex;gap:11px;padding:12px 14px;border-left:3px solid #D6461F;background:rgba(214,70,31,.07)">
+                    <span style="flex:none;font:500 9.5px 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#D6461F;padding-top:2px">Note</span>
+                    <span style="font:300 13px/1.58 'Bricolage Grotesque',sans-serif;color:rgba(23,20,15,.78)">{{ s.tip }}</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isGrocery }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;z-index:10;max-width:680px;margin:0 auto;padding:110px 24px 140px;text-align:center;animation:er-in .8s cubic-bezier(.16,1,.3,1) both">
+      <div style="width:84px;height:84px;margin:0 auto;border:1.5px solid #17140F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:34px;animation:er-stamp 7s ease-in-out infinite">∅</div>
+      <h2 style="font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(34px,5.6vw,52px);margin:26px 0 0;letter-spacing:-.035em;line-height:.95">Aucune course<br>en attente</h2>
+      <p style="margin:16px auto 0;max-width:400px;font:300 15px/1.6 'Bricolage Grotesque',sans-serif;color:rgba(23,20,15,.58)">Ajoutez les ingrédients d’une fiche : EasyRecette fusionne les doublons et range tout par rayon.</p>
+      <button sc-camel-on-click="{{ goStudio }}" style="margin-top:28px;padding:14px 24px;border:1.5px solid #17140F;border-radius:2px;background:#F7F3EA;font:500 11px 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 #17140F;transition:transform .18s,box-shadow .18s" style-hover="transform:translate(-1.5px,-1.5px);box-shadow:5px 5px 0 #17140F">Partir d’une fiche</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCook }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ cookShell }}">
+      <div style="{{ cookAmbient }}"></div>
+      <div style="position:relative;max-width:1180px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:34px;animation:er-in .7s cubic-bezier(.16,1,.3,1) both">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1.5px solid {{ cookRule }}">
+          <span style="{{ cookMeta }}">Étape {{ cookN }} / 07 · Gnocchi ricotta</span>
+          <div style="display:flex;gap:8px">
+            <button sc-camel-on-click="{{ toggleSound }}" style="{{ soundBtn }}">{{ soundLabel }}</button>
+            <button sc-camel-on-click="{{ goStudio }}" style="{{ closeBtn }}">Quitter ✕</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:52px;align-items:center">
+          <div>
+            <div style="{{ cookIndex }}">{{ cookNum }}</div>
+            <p style="{{ cookText }}">{{ cookStepText }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:22px">
+            <div style="position:relative;width:290px;height:290px;max-width:66vw">
+              <svg sc-camel-view-box="0 0 290 290" style="width:100%;height:100%;transform:rotate(-90deg)">
+                <circle cx="145" cy="145" r="132" fill="none" stroke="{{ cookRule }}" stroke-width="1.5"></circle>
+                <circle cx="145" cy="145" r="132" fill="none" stroke="#D6461F" stroke-width="7" stroke-linecap="butt" stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ dash }}" style="transition:stroke-dashoffset .9s linear"></circle>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+                <span style="{{ timerText }}">{{ clock }}</span>
+                <span style="{{ cookMeta }}">{{ timerCaption }}</span>
+              </div>
+            </div>
+            <button sc-camel-on-click="{{ toggleRun }}" style="{{ runBtn }}">{{ runLabel }}</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
+          <button sc-camel-on-click="{{ prevStep }}" style="{{ navBtn }}">← Précédent</button>
+          <button sc-camel-on-click="{{ nextStep }}" style="{{ nextBtn }}">Suivant →</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1320,&quot;height&quot;:920},&quot;defaultServings&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:12,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Studio&quot;},&quot;cookModeTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Sombre&quot;,&quot;Crème&quot;],&quot;default&quot;:&quot;Sombre&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mode cuisine&quot;},&quot;showHud&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Accueil&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Ample&quot;,&quot;Réduit&quot;],&quot;default&quot;:&quot;Ample&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Animation&quot;}}">
+class Component extends DCLogic {
+  state = { screen: "accueil", servings: 4, checked: {}, filter: "Tout", phase: 0, url: "", cookStep: 0, remaining: 180, running: false, sound: true, activeTimer: null };
+
+  DATA = [
+    { name: "Gnocchi", items: [
+      { k: "ricotta", n: "Ricotta égouttée", q: 500, u: "g" },
+      { k: "parm1", n: "Parmesan râpé", q: 80, u: "g" },
+      { k: "farine", n: "Farine T55", q: 120, u: "g" },
+      { k: "jaunes", n: "Jaunes d’œufs", q: 2, u: "" },
+      { k: "muscade", n: "Muscade râpée", q: 1, u: "pincée" }
+    ]},
+    { name: "Beurre de sauge", items: [
+      { k: "beurre", n: "Beurre doux", q: 90, u: "g" },
+      { k: "sauge", n: "Feuilles de sauge", q: 16, u: "" },
+      { k: "ail", n: "Gousse d’ail écrasée", q: 1, u: "" },
+      { k: "citron", n: "Jus de citron", q: 1, u: "c. à s." }
+    ]},
+    { name: "Finition", items: [
+      { k: "noisettes", n: "Noisettes torréfiées", q: 40, u: "g" },
+      { k: "poivre", n: "Poivre de Sichuan", q: 2, u: "pincées" },
+      { k: "parm2", n: "Copeaux de parmesan", q: 30, u: "g" }
+    ]}
+  ];
+
+  STEPS = [
+    { t: "Égouttez la ricotta 30 minutes dans une passoire tapissée de mousseline. Une pâte trop humide demandera trop de farine." },
+    { t: "Mélangez ricotta, parmesan, jaunes et muscade jusqu’à obtenir une masse lisse, sans travailler l’appareil." },
+    { t: "Incorporez la farine en trois fois. La pâte doit rester souple et à peine collante sous le doigt." },
+    { t: "Formez des boudins de 2 cm, détaillez des tronçons réguliers et farinez-les légèrement.", tip: "Roulez-les sur le dos d’une fourchette pour créer les stries qui retiendront le beurre." },
+    { t: "Pochez les gnocchi dans une eau frémissante salée. Ils sont prêts dès qu’ils remontent à la surface.", d: 180, label: "Pocher 3 min" },
+    { t: "Faites fondre le beurre à feu moyen jusqu’à coloration noisette, puis ajoutez la sauge et l’ail.", d: 240, label: "Beurre noisette 4 min", tip: "Arrêtez la cuisson dès que l’odeur devient de noisette : trente secondes de plus et le beurre brûle." },
+    { t: "Roulez les gnocchi égouttés dans le beurre, dressez avec les noisettes concassées, le parmesan et le poivre." }
+  ];
+
+  get reduced() { return (this.props.motion || "Ample") === "Réduit"; }
+
+  reveal = el => {
+    if (!el) return;
+    const kids = el.dataset.stagger ? Array.from(el.children) : [el];
+    kids.forEach((k, i) => {
+      k.style.opacity = "";
+      if (this.reduced) { k.style.animation = ""; return; }
+      k.style.animation = "er-in .7s cubic-bezier(.16,1,.3,1) " + (i * 70) + "ms both";
+    });
+  };
+
+  fiche = el => {
+    if (!el || el.__fc) return;
+    el.__fc = 1;
+    const rot = el.dataset.rot || "0";
+    if (this.reduced) return;
+    el.addEventListener("pointerenter", () => { el.style.transform = "rotate(0deg) translateY(-8px)"; });
+    el.addEventListener("pointerleave", () => { el.style.transform = "rotate(" + rot + "deg)"; });
+  };
+
+  tilt = el => {
+    if (!el || el.__tl) return;
+    el.__tl = 1;
+    if (this.reduced) return;
+    el.addEventListener("pointermove", e => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      el.style.transform = "perspective(1600px) rotateX(" + (-y * 3.6) + "deg) rotateY(" + (x * 4.4) + "deg) translateY(-5px)";
+    });
+    el.addEventListener("pointerleave", () => { el.style.transform = ""; });
+  };
+
+  glow = el => {
+    if (!el || el.__gl) return;
+    el.__gl = 1;
+    el.addEventListener("pointermove", e => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100) + "%");
+      el.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100) + "%");
+    });
+  };
+
+  componentDidMount() {
+    if (this.props.defaultServings) this.setState({ servings: this.props.defaultServings });
+    this._t = setInterval(() => {
+      if (this.state.running && this.state.remaining > 0) this.setState(s => ({ remaining: s.remaining - 1, running: s.remaining - 1 > 0 }));
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); [this._a, this._b, this._c].forEach(clearTimeout); }
+
+  go(s) { return () => this.setState({ screen: s }); }
+  fmtQ(q) {
+    const v = q * (this.state.servings / 4);
+    const r = v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
+    return String(r).replace(".", ",");
+  }
+  clock(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+
+  startImport = () => {
+    this.setState({ phase: 1, url: this.state.url || "tiktok.com/@chef_artisan/video/7412…" });
+    this._a = setTimeout(() => this.setState({ phase: 2 }), 900);
+    this._b = setTimeout(() => this.setState({ phase: 3 }), 1900);
+    this._c = setTimeout(() => this.setState({ phase: 4 }), 2900);
+  };
+
+  pill(active) {
+    return "padding:9px 14px;border:1.5px solid " + (active ? "#17140F" : "rgba(23,20,15,.3)") +
+      ";border-radius:2px;background:" + (active ? "#17140F" : "transparent") +
+      ";color:" + (active ? "#F2EDE3" : "rgba(23,20,15,.6)") +
+      ";font:500 10px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.2s";
+  }
+  navPill(active) {
+    return "padding:10px 15px;border:none;border-right:1.5px solid #17140F;background:" + (active ? "#17140F" : "transparent") +
+      ";color:" + (active ? "#F2EDE3" : "rgba(23,20,15,.62)") +
+      ";font:500 10px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.2s";
+  }
+  hudPill(i) {
+    const p = this.state.phase, done = p > i, live = p === i;
+    const col = done ? "#D8F250" : live ? "#F2EDE3" : "rgba(242,237,227,.35)";
+    return "display:flex;align-items:center;gap:10px;font:400 11px 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:" + col + ";transition:.4s";
+  }
+  hudDot(i) {
+    const p = this.state.phase;
+    return "width:7px;height:7px;flex:none;background:" + (p > i ? "#D8F250" : p === i ? "#D6461F" : "rgba(242,237,227,.22)") + (p === i ? ";animation:er-blink 1s steps(1) infinite" : "");
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dark = (this.props.cookModeTheme || "Sombre") === "Sombre";
+    const bg = dark ? "#17140F" : "#F2EDE3";
+    const ink = dark ? "#F2EDE3" : "#17140F";
+    const soft = dark ? "rgba(242,237,227,.5)" : "rgba(23,20,15,.5)";
+    const rule = dark ? "rgba(242,237,227,.22)" : "rgba(23,20,15,.22)";
+    const circ = 2 * Math.PI * 132;
+    const step = this.STEPS[st.cookStep];
+    const total = st.activeTimer || 180;
+    const nChecked = Object.values(st.checked).filter(Boolean).length;
+
+    const groups = this.DATA.map(g => ({
+      name: g.name,
+      items: g.items.map(it => {
+        const on = !!st.checked[it.k];
+        return {
+          name: it.n,
+          qty: this.fmtQ(it.q) + (it.u ? " " + it.u : ""),
+          mark: on ? "✕" : "",
+          toggle: () => this.setState(s => ({ checked: Object.assign({}, s.checked, { [it.k]: !s.checked[it.k] }) })),
+          dot: "flex:none;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font:500 10px 'DM Mono',monospace;border:1.5px solid " + (on ? "#D6461F" : "rgba(23,20,15,.32)") + ";color:#D6461F;background:" + (on ? "rgba(214,70,31,.12)" : "transparent") + ";transition:.2s" + (on ? ";animation:er-pop .34s cubic-bezier(.16,1,.3,1)" : ""),
+          label: "flex:1;min-width:0;font:300 14.5px 'Bricolage Grotesque',sans-serif;color:" + (on ? "rgba(23,20,15,.36)" : "rgba(23,20,15,.9)") + ";text-decoration:" + (on ? "line-through" : "none") + ";transition:.2s",
+          qtyStyle: "flex:none;font:500 12px 'DM Mono',monospace;letter-spacing:.04em;color:" + (on ? "rgba(23,20,15,.3)" : "#17140F") + ";transition:.2s"
+        };
+      })
+    }));
+
+    const steps = this.STEPS.map((s, i) => {
+      const live = st.activeTimer && st.running && st.cookStep === i && st.screen === "studio";
+      return {
+        n: String(i + 1).padStart(2, "0"), text: s.t, hasTimer: !!s.d, hasTip: !!s.tip, tip: s.tip || "",
+        chipLabel: live ? this.clock(st.remaining) + " restantes" : (s.label || "") + " ▶",
+        chipStyle: "margin-top:14px;padding:10px 15px;border:1.5px solid " + (live ? "#D6461F" : "#17140F") + ";border-radius:2px;background:" + (live ? "#D6461F" : "transparent") + ";color:" + (live ? "#F7F2E8" : "#17140F") + ";font:500 10px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.2s",
+        startTimer: () => this.setState({ activeTimer: s.d, remaining: s.d, running: true, cookStep: i })
+      };
+    });
+
+    return {
+      reveal: this.reveal, tilt: this.tilt, glow: this.glow, fiche: this.fiche,
+      isHome: st.screen === "accueil", isLib: st.screen === "bibliotheque", isStudio: st.screen === "studio",
+      isGrocery: st.screen === "epicerie", isCook: st.screen === "cuisine",
+      goHome: this.go("accueil"), goLib: this.go("bibliotheque"), goStudio: this.go("studio"),
+      goGrocery: this.go("epicerie"), goCook: this.go("cuisine"),
+      navHome: this.navPill(st.screen === "accueil"), navLib: this.navPill(st.screen === "bibliotheque"),
+      navStudio: this.navPill(st.screen === "studio" || st.screen === "cuisine"), navGrocery: this.navPill(st.screen === "epicerie"),
+
+      url: st.url, setUrl: e => this.setState({ url: e.target.value }),
+      pasteDemo: () => this.setState({ url: "tiktok.com/@chef_artisan/video/7412…" }),
+      startImport: this.startImport,
+      showHud: this.props.showHud !== false,
+      importDone: st.phase >= 4,
+      hudStatus: st.phase === 0 ? "prêt" : st.phase >= 4 ? "terminé" : "analyse…",
+      hud1: this.hudPill(1), hud2: this.hudPill(2), hud3: this.hudPill(3),
+      hudDot1: this.hudDot(1), hudDot2: this.hudDot(2), hudDot3: this.hudDot(3),
+      hudBar: "height:100%;width:" + Math.min(100, st.phase * 25) + "%;background:#D8F250;transition:width .7s cubic-bezier(.16,1,.3,1)",
+      scanline: "position:absolute;left:0;right:0;top:0;height:22%;background:linear-gradient(to bottom,transparent,rgba(216,242,80,.16),transparent);pointer-events:none;opacity:" + (st.phase > 0 && st.phase < 4 ? 1 : 0) + ";animation:er-scan 1.7s linear infinite;transition:opacity .4s",
+
+      fTous: this.pill(st.filter === "Tout"), fQuick: this.pill(st.filter === "Rapides"), fProt: this.pill(st.filter === "Protéines"),
+      fDess: this.pill(st.filter === "Desserts"), fBake: this.pill(st.filter === "Boulange"), fVeg: this.pill(st.filter === "Végétarien"),
+      setFilterAll: () => this.setState({ filter: "Tout" }), setFilterQuick: () => this.setState({ filter: "Rapides" }),
+      setFilterProt: () => this.setState({ filter: "Protéines" }), setFilterDess: () => this.setState({ filter: "Desserts" }),
+      setFilterBake: () => this.setState({ filter: "Boulange" }), setFilterVeg: () => this.setState({ filter: "Végétarien" }),
+
+      servings: st.servings, kcal: 486,
+      inc: () => this.setState(s => ({ servings: Math.min(12, s.servings + 1) })),
+      dec: () => this.setState(s => ({ servings: Math.max(1, s.servings - 1) })),
+      groups, steps, checkedCount: nChecked,
+      checkBar: "height:100%;width:" + (nChecked / 12 * 100) + "%;background:#D6461F;transition:width .45s cubic-bezier(.16,1,.3,1)",
+
+      circ: circ, dash: circ * (1 - st.remaining / total),
+      clock: this.clock(st.remaining), timerCaption: st.running ? "en cours" : "en pause",
+      cookN: String(st.cookStep + 1).padStart(2, "0"), cookNum: String(st.cookStep + 1).padStart(2, "0"), cookStepText: step.t,
+      prevStep: () => this.setState(s => ({ cookStep: Math.max(0, s.cookStep - 1) })),
+      nextStep: () => this.setState(s => ({ cookStep: Math.min(6, s.cookStep + 1) })),
+      toggleRun: () => this.setState(s => ({ running: !s.running, remaining: s.remaining || total })),
+      runLabel: st.running ? "Pause ▮▮" : "Démarrer ▶",
+      toggleSound: () => this.setState(s => ({ sound: !s.sound })),
+      soundLabel: st.sound ? "Son ▮▮▮" : "Son ✕",
+
+      cookShell: "position:fixed;inset:0;z-index:100;background:" + bg + ";color:" + ink + ";padding:40px 34px;display:flex;align-items:center;overflow-y:auto;overflow-x:hidden",
+      cookAmbient: "position:absolute;top:-28%;right:-18%;width:64vw;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(214,70,31,.2),transparent 66%);filter:blur(20px);animation:er-drift 20s ease-in-out infinite;pointer-events:none",
+      cookRule: rule,
+      cookMeta: "font:500 10.5px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:" + soft,
+      cookIndex: "font-family:'Instrument Serif',serif;font-size:clamp(70px,10vw,130px);line-height:.8;letter-spacing:-.05em;color:" + (dark ? "rgba(242,237,227,.18)" : "rgba(23,20,15,.16)"),
+      cookText: "margin:18px 0 0;font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(30px,4.4vw,56px);line-height:1.08;letter-spacing:-.032em;color:" + ink + ";text-wrap:pretty",
+      timerText: "font-family:'Instrument Serif',serif;font-size:72px;line-height:1;letter-spacing:-.03em;color:" + ink,
+      runBtn: "padding:15px 34px;border:1.5px solid " + (st.running ? rule : "#D6461F") + ";border-radius:2px;background:" + (st.running ? "transparent" : "#D6461F") + ";color:" + (st.running ? ink : "#F7F2E8") + ";font:500 11px 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;min-width:180px;transition:.22s",
+      soundBtn: "padding:10px 15px;border:1.5px solid " + rule + ";border-radius:2px;background:transparent;color:" + soft + ";font:500 10px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.22s",
+      closeBtn: "padding:10px 15px;border:1.5px solid " + ink + ";border-radius:2px;background:" + ink + ";color:" + bg + ";font:500 10px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.22s",
+      navBtn: "flex:1;max-width:300px;padding:22px;border:1.5px solid " + rule + ";border-radius:2px;background:transparent;color:" + ink + ";font:500 12px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.22s",
+      nextBtn: "flex:1;max-width:300px;padding:22px;border:1.5px solid #D8F250;border-radius:2px;background:#D8F250;color:#17140F;font:500 12px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:.22s"
+    };
+  }
+}
+</script>
+
+
+<div id="__claude_design_branding"><style>#__claude_design_branding{position:fixed;right:16px;bottom:16px;z-index:2147483646;display:flex;align-items:center;gap:7px;height:30px;padding:0 5px 0 10px;border-radius:999px;font-family:"Anthropic Sans",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12.5px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:#141413;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 0 0 .5px rgba(31,30,29,.14),0 2px 10px rgba(0,0,0,.09)}
+#__claude_design_branding *{box-sizing:border-box;margin:0}
+#__claude_design_branding a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+#__claude_design_branding a:hover span{text-decoration:underline}
+#__claude_design_branding svg{flex:none}
+#__claude_design_branding a svg{color:#D97757}
+#__claude_design_branding button{width:20px;height:20px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:currentColor;opacity:.55;border:0;background:none;cursor:pointer;flex:none;font:inherit;transition:opacity .14s}
+#__claude_design_branding button:hover{opacity:1;background:rgba(127,127,127,.22)}
+@media print{#__claude_design_branding{display:none}}</style><a href="https://claude.com/product/design" target="_blank" rel="noopener noreferrer"><svg width="14" height="14" viewBox="0 0 20 21" fill="none" aria-hidden="true"><path fill="currentColor" d="M9.99902 0C15.5258 0.000170936 19.999 4.50643 19.999 10.0547C19.999 11.7656 19.5863 12.9976 18.7861 13.8203C17.9924 14.6362 16.9465 14.9138 15.9854 15.0078C15.05 15.0993 14.0097 15.0262 13.2549 15.0186C12.8524 15.0145 12.5177 15.0267 12.2441 15.0703C11.9682 15.1144 11.8143 15.1813 11.7305 15.2432C11.4745 15.4322 11.3353 15.7121 11.2656 16.1602C11.2303 16.3875 11.2168 16.6362 11.209 16.9131C11.2017 17.1715 11.1986 17.4893 11.1807 17.7705C11.1469 18.2975 11.0495 19.0865 10.4199 19.5908C9.7846 20.0996 8.88652 20.1057 7.85449 19.877C7.36399 19.7682 6.88652 19.6232 6.42578 19.4453C2.66989 17.9949 0.000187748 14.3414 0 10.0547C0 4.50643 4.47223 0.000171048 9.99902 0ZM9.99902 1.60547C5.36781 1.60564 1.60547 5.38391 1.60547 10.0547C1.60566 13.6582 3.84823 16.7296 7.00391 17.9482C7.39027 18.0974 7.79085 18.2184 8.20215 18.3096C9.1375 18.5169 9.384 18.3633 9.41602 18.3379C9.4524 18.3087 9.54558 18.1915 9.5791 17.668C9.5947 17.4239 9.59473 17.1786 9.60352 16.8672C9.61179 16.5742 9.62831 16.2435 9.67969 15.9131C9.78359 15.2455 10.0474 14.4906 10.7764 13.9521C11.1479 13.6778 11.5842 13.5493 11.9912 13.4844C12.4007 13.4191 12.8434 13.4088 13.2705 13.4131C14.1753 13.4222 15.0071 13.4905 15.8291 13.4102C16.6257 13.3322 17.2249 13.1235 17.6357 12.7012C18.0401 12.2855 18.3935 11.5261 18.3936 10.0547C18.3936 5.38391 14.6302 1.60564 9.99902 1.60547ZM5.11621 9.86719C5.86386 9.91468 6.45486 10.5348 6.45508 11.2939C6.45506 12.0838 5.81519 12.7245 5.02539 12.7246C4.28481 12.7246 3.67573 12.1617 3.60254 11.4404L3.59473 11.2939L3.60156 11.1533C3.66942 10.4596 4.23282 9.91186 4.93359 9.86719H5.11621ZM14.9814 7.19141C15.729 7.23889 16.3199 7.85919 16.3203 8.61816C16.3203 9.40801 15.6804 10.0487 14.8906 10.0488C14.1501 10.0487 13.5409 9.48586 13.4678 8.76465L13.46 8.61816L13.4668 8.47754C13.5348 7.78403 14.0983 7.23618 14.7988 7.19141H14.9814ZM6.4541 4.93457C7.20161 4.9822 7.79275 5.60231 7.79297 6.36133C7.79288 7.151 7.15291 7.7917 6.36328 7.79199C5.62274 7.79199 5.01369 7.22903 4.94043 6.50781L4.93262 6.36133L4.93945 6.2207C5.00731 5.52698 5.5707 4.97922 6.27148 4.93457H6.4541ZM11.3867 3.59668C12.1343 3.64419 12.7253 4.26436 12.7256 5.02344C12.7256 5.81326 12.0857 6.45393 11.2959 6.4541C10.5553 6.4541 9.94622 5.89123 9.87305 5.16992L9.86523 5.02344L9.87207 4.88281C9.93996 4.18912 10.5033 3.64133 11.2041 3.59668H11.3867Z"></path></svg><span>Made with Claude Design</span></a><button type="button" aria-label="Dismiss" onclick="this.parentElement.remove()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></button></div></body></html>

@@ -1,0 +1,38 @@
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
+
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+server/prisma/*.db*
+server/prisma/migrations/dev.db*
+
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Config locale Claude Code (pas du code applicatif)
+.claude/
+
+# Scripts de debug ponctuels, non destinés au repo
+server/.dbg.ts
+
+client/dev-dist/
+coverage/
+
+# Médias téléchargés (vidéos des recettes importées)
+server/media/
+
+# Binaire Windows local (yt-dlp) — inutile en Docker, où il est installé
+# depuis les releases Linux directement dans l'image (voir server/Dockerfile).
+server/bin/

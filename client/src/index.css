@@ -1,0 +1,505 @@
+@import 'tailwindcss';
+
+/*
+ * EasyRecette — identité visuelle « édition imprimée »
+ *
+ * Parti pris : une revue de cuisine composée au plomb, pas une app web. Le
+ * repère n'est plus le carnet manuscrit mais la fiche cartonnée, découpée,
+ * classée dans un fichier. Concrètement :
+ *  - un fond crème et une encre presque noire, jamais de gris d'interface ;
+ *  - un trait noir de 1.5px qui cerne tout, et une ombre portée dure et
+ *    décalée (pas de flou) : l'objet est posé sur la page, pas en lévitation ;
+ *  - une serif d'affiche (Instrument Serif) pour les titres, une grotesque
+ *    légère (Bricolage) pour le corps, un mono capitalisé et espacé pour les
+ *    étiquettes — le trio d'une maquette de magazine ;
+ *  - deux couleurs seulement : terre cuite pour l'action, vert acide pour le
+ *    marquage. Elles ne se mélangent jamais dans un dégradé ;
+ *  - des angles quasi nuls (2–3px), parce qu'une fiche cartonnée est coupée
+ *    au massicot, pas arrondie.
+ */
+
+@theme {
+  /* --- Papier et encre ------------------------------------------------- */
+  /* Le crème est la valeur de référence : tout le reste s'y pose. */
+  --color-paper: #f2ede3;
+  --color-paper-raised: #f7f3ea;
+  --color-paper-sunk: #e4dccd;
+
+  --color-ink: #17140f;
+  --color-ink-soft: rgb(23 20 15 / 0.62);
+  --color-ink-faint: rgb(23 20 15 / 0.45);
+
+  /* Le filet noir est structurel : c'est lui qui découpe la page. */
+  --color-rule: rgb(23 20 15 / 0.26);
+  --color-rule-strong: #17140f;
+
+  /* --- Terre cuite : l'action, la cuisson ------------------------------ */
+  --color-ember: #d6461f;
+  --color-ember-soft: rgb(214 70 31 / 0.07);
+  --color-ember-ink: #f7f2e8;
+
+  /* --- Vert acide : le marquage, le validé, le neuf -------------------- */
+  /* Réservé aux surlignages et aux pastilles. Jamais du texte sur crème :
+     le contraste serait insuffisant. */
+  --color-lime: #d8f250;
+  --color-lime-soft: rgb(216 242 80 / 0.24);
+
+  /* --- États ----------------------------------------------------------- */
+  --color-olive: #4f7a21;
+  --color-olive-soft: rgb(79 122 33 / 0.12);
+  --color-amber-warn: #9a6408;
+  --color-amber-soft: rgb(154 100 8 / 0.1);
+  --color-danger: #b8321a;
+  --color-danger-soft: rgb(184 50 26 / 0.09);
+
+  /* --- Typographie ------------------------------------------------------ */
+  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Échelle d'affiche : les titres serif descendent très bas en interligne
+     (.88) parce qu'ils sont composés serrés, comme une une de magazine. */
+  --text-hero: clamp(46px, 7.6vw, 104px);
+  --text-title: clamp(38px, 6.4vw, 74px);
+  --text-section: clamp(32px, 4.6vw, 52px);
+  --text-card: 25px;
+
+  /* --- Ombres dures : un décalage, aucun flou -------------------------- */
+  --shadow-card: 7px 7px 0 rgb(23 20 15 / 0.14);
+  --shadow-raised: 14px 14px 0 rgb(23 20 15 / 0.18);
+  --shadow-hero: 10px 10px 0 rgb(23 20 15 / 0.16);
+  --shadow-press: 3px 3px 0 #17140f;
+  --shadow-press-lift: 5px 5px 0 #17140f;
+  --shadow-sticky: 5px 5px 0 rgb(23 20 15 / 0.12);
+
+  /* Le massicot, pas le rayon de 16px. */
+  --radius-card: 3px;
+  --radius-control: 2px;
+
+  /* --- Mouvement -------------------------------------------------------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pas de mode sombre pour la coquille : la maquette est crème/encre en
+   permanence, quel que soit le thème système. Seul le mode cuisine passe sur
+   l'encre, et il le fait par ses propres couleurs, pas par ces jetons. */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  /* Deux trames superposées, toutes deux fixes et inertes :
+     1. les lignes d'horizon, qui rappellent le papier réglé d'une épreuve ;
+     2. le grain, qui casse l'aplat numérique des grandes surfaces crème. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: linear-gradient(var(--rule-line) 1px, transparent 1px);
+    background-size: 100% 34px;
+    --rule-line: rgb(23 20 15 / 0.045);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    pointer-events: none;
+    opacity: 0.055;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: var(--color-ember);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--color-ink);
+  }
+
+  /* Le focus reprend le vert acide : c'est la seule couleur qui ressort
+     aussi bien sur crème que sur encre. */
+  :focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-lime);
+    color: #17140f;
+  }
+
+  button,
+  [role='button'],
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  /* --- La fiche : l'objet de base de toute l'interface ------------------ */
+  .surface {
+    background-color: var(--color-paper-raised);
+    border: 1.5px solid var(--color-rule-strong);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Coin supérieur droit coupé au massicot, comme une fiche de classement. */
+  .clip-corner {
+    clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+  }
+
+  /* --- La fiche inclinée ------------------------------------------------
+     Le geste signature de la maquette : la fiche penchée se redresse et se
+     soulève au survol, comme si on la sortait du fichier pour la lire.
+     L'angle de repos vient de `--er-rot`, posé en style inline par le
+     composant ; le survol le ramène à zéro. On passe par une variable plutôt
+     que par une transformée inline pour que le survol reste entièrement en
+     CSS — sinon il faudrait deux écouteurs de pointeur par fiche, et le
+     `prefers-reduced-motion` ci-dessous ne pourrait pas le neutraliser. */
+  .fiche {
+    transform: rotate(var(--er-rot, 0deg));
+    transition:
+      transform 0.5s var(--ease-out-expo),
+      box-shadow 0.5s;
+  }
+
+  .fiche:hover,
+  .fiche:focus-within {
+    /* `--er-reveal` pilote le zoom de l'image : il descend en cascade sur
+       l'enfant `.er-reveal`, qui est seul à savoir de combien zoomer. */
+    --er-reveal: 1;
+    transform: rotate(0deg) translateY(-8px);
+  }
+
+  /* Le zoom lent de la photo, piloté par la fiche parente. Le facteur est
+     paramétrable parce que la carte héros zoome moins (.045) que la fiche. */
+  .er-reveal {
+    transform: scale(calc(1 + var(--er-reveal, 0) * var(--er-reveal-factor, 0.06)));
+    transition: transform 0.8s var(--ease-out-expo);
+  }
+
+  /* Le bord perforé qui termine une fiche détachable. */
+  .edge-punched {
+    height: 22px;
+    background-image: radial-gradient(
+      circle at 9px 0,
+      var(--color-paper) 6.5px,
+      transparent 7px
+    );
+    background-size: 18px 22px;
+    background-repeat: repeat-x;
+    background-position: 0 12px;
+  }
+
+  /* L'étiquette mono : capitales, très espacées, petite. Elle sert de
+     légende partout — jamais pour du texte courant. */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .label-mono-sm {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  /* Bouton « pressable » : l'ombre dure se rétracte sous le doigt. */
+  .press {
+    box-shadow: var(--shadow-press);
+    transition:
+      transform 0.18s,
+      box-shadow 0.18s;
+  }
+
+  .press:hover:not(:disabled) {
+    transform: translate(-1.5px, -1.5px);
+    box-shadow: var(--shadow-press-lift);
+  }
+
+  .press:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 var(--color-rule-strong);
+  }
+
+  /* Surlignage au feutre derrière un mot de titre. */
+  .highlight-lime {
+    position: relative;
+    display: inline-block;
+    font-style: italic;
+  }
+
+  .highlight-lime > span {
+    position: relative;
+    z-index: 2;
+  }
+
+  .highlight-lime::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    left: -0.06em;
+    right: -0.06em;
+    bottom: 0.14em;
+    height: 0.34em;
+    background: var(--color-lime);
+  }
+
+  .rule-dotted {
+    background-image: radial-gradient(circle, var(--color-rule) 1px, transparent 1px);
+    background-size: 8px 1px;
+    background-repeat: repeat-x;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* --- Animations -------------------------------------------------------- */
+
+@keyframes er-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes er-tick {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes er-in-fiche {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotate(var(--er-rot, 0deg));
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--er-rot, 0deg));
+  }
+}
+
+/* Le balayage de l'analyse : la bande part très au-dessus du cadre et le
+   traverse largement (520%) pour que la reprise de boucle tombe hors champ,
+   sans saccade visible. */
+@keyframes er-scan {
+  0% {
+    transform: translateY(-120%);
+  }
+  100% {
+    transform: translateY(520%);
+  }
+}
+
+@keyframes er-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0.15;
+  }
+}
+
+/* Le coup de tampon d'une case cochée : le dépassement à 62% (1.16) donne la
+   sensation d'un geste appuyé, pas d'une simple apparition. */
+@keyframes er-pop {
+  0% {
+    transform: scale(0.5) rotate(-12deg);
+  }
+  62% {
+    transform: scale(1.16) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes er-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -4%, 0) scale(1.06);
+  }
+}
+
+@keyframes er-stamp {
+  0%,
+  100% {
+    transform: rotate(-8deg) scale(1);
+  }
+  50% {
+    transform: rotate(-5deg) scale(1.04);
+  }
+}
+
+@keyframes er-sheen {
+  0% {
+    transform: translateX(-140%);
+  }
+  60%,
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@layer utilities {
+  .animate-er-in {
+    animation: er-in 0.9s var(--ease-out-expo) both;
+  }
+
+  .animate-er-tick {
+    animation: er-tick 34s linear infinite;
+  }
+
+  /* Deux cadences de clignotement, et la différence est voulue : le curseur
+     de saisie bat lentement (il attend), le voyant d'étape en cours bat plus
+     vite (il travaille). */
+  .animate-er-blink {
+    animation: er-blink 1.4s steps(1) infinite;
+  }
+
+  .animate-er-blink-fast {
+    animation: er-blink 1s steps(1) infinite;
+  }
+
+  /* Révélation propre à la fiche. `er-in` finit sur `transform:none` en mode
+     `both`, ce qui figerait la fiche à plat et neutraliserait aussi bien son
+     angle de repos que le redressement au survol. Cette variante rejoint donc
+     l'angle au lieu de zéro, et ne retient que l'opacité une fois finie. */
+  .animate-er-in-fiche {
+    animation: er-in-fiche 0.7s var(--ease-out-expo) backwards;
+  }
+
+  .animate-er-scan {
+    animation: er-scan 1.7s linear infinite;
+  }
+
+  .animate-er-pop {
+    animation: er-pop 0.34s var(--ease-out-expo);
+  }
+
+  .animate-er-drift {
+    animation: er-drift 22s ease-in-out infinite;
+  }
+
+  .animate-er-stamp {
+    animation: er-stamp 6s ease-in-out infinite;
+  }
+
+  /* Reflet qui traverse un bouton d'action, très espacé dans le temps pour
+     rester un accent et non un clignotement. */
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sheen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.55), transparent);
+    transform: translateX(-140%);
+    animation: er-sheen 4.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+/* Respect strict de la préférence système : en cuisine, une animation non
+   désirée peut désorienter. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Neutraliser la durée ne suffit pas : la fiche sauterait instantanément de
+     l'angle au redressement. On supprime le geste lui-même — la fiche reste
+     droite et immobile, seule l'ombre continue de signaler le survol. */
+  .fiche,
+  .fiche:hover,
+  .fiche:focus-within {
+    transform: none !important;
+  }
+
+  .er-reveal {
+    transform: none !important;
+  }
+}

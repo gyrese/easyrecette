@@ -1,0 +1,316 @@
+// CookBook — schéma de données
+//
+// Provider: SQLite pour le développement local (zéro installation).
+// La migration vers PostgreSQL ne demande que de changer `provider` et `url`
+// ci-dessous : aucun type natif SQLite n'est utilisé, les enums sont des String
+// contraintes applicativement (voir src/schemas/), et les listes (tags,
+// equipment, tips) sont stockées en JSON texte via src/utils/json.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Mono-utilisateur pour le MVP : un seul User "local" créé au seed.
+/// Le modèle existe dès maintenant pour que l'ajout d'une vraie auth
+/// n'impose pas de migration destructrice plus tard.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipes       Recipe[]
+  favorites     Favorite[]
+  shoppingLists ShoppingList[]
+  imports       Import[]
+}
+
+model Recipe {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+
+  /// Vidéo d'origine conservée localement (servie sous /media).
+  /// Permet de revoir le geste même si la publication est supprimée.
+  videoUrl    String?
+  /// Image extraite de la vidéo, utilisée comme illustration de la fiche.
+  posterUrl   String?
+
+  servings Int?
+
+  /// Durées en minutes.
+  prepTime    Int?
+  cookingTime Int?
+  totalTime   Int?
+
+  /// "facile" | "moyen" | "difficile" — voir DIFFICULTIES dans src/schemas/recipe.ts
+  difficulty String?
+
+  /// "apero" | "entree" | "plat" | "dessert" | "sauce" | "boisson"
+  /// | "accompagnement" | "petit-dejeuner" — voir CATEGORIES.
+  category String?
+
+  /// Origine culinaire libre : "japonaise", "créole", "italienne"…
+  cuisine String?
+
+  /// Listes courtes stockées en JSON texte (portable SQLite <-> Postgres).
+  equipment String @default("[]")
+  tips      String @default("[]")
+
+  /// Indice de confiance de l'extraction IA, 0..1. null si saisie manuelle.
+  confidence Float?
+
+  /// Avertissements IA (informations manquantes ou incertaines), JSON texte.
+  warnings String @default("[]")
+
+  /// Provenance — jamais effacée, affichée sur la fiche recette.
+  sourceUrl      String?
+  sourcePlatform String?
+  sourceAuthor   String?
+  sourceTitle    String?
+  importedAt     DateTime?
+
+  isFavorite Boolean @default(false)
+
+  /// Note personnelle attribuée APRÈS avoir essayé la recette, 1..5.
+  /// null = pas encore essayée. C'est cette distinction que porte le badge
+  /// « Essayée » du fichier : on ne note pas ce qu'on n'a pas cuisiné.
+  rating Int?
+
+  /// Commentaire libre laissé au moment de la notation (« trop salé »,
+  /// « refaire avec moitié moins de crème »). Sans objet sans `rating`.
+  ratingNote String?
+
+  /// Date du dernier essai. Renseignée en même temps que `rating`.
+  triedAt DateTime?
+
+  /// Photo prise par l'utilisateur, servie sous /media/recipes/<id>/.
+  /// Distincte de `imageUrl` (celle de la source) : les deux coexistent, et
+  /// c'est celle-ci qui prime à l'affichage quand elle existe. La source
+  /// n'est jamais écrasée — retirer sa photo rend la fiche à son visuel d'origine.
+  userPhotoUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ingredients RecipeIngredient[]
+  steps       RecipeStep[]
+  tags        RecipeTag[]
+  favorites   Favorite[]
+  imports     Import[]
+  listItems   ShoppingListItem[]
+
+  @@index([userId, createdAt])
+  @@index([userId, category])
+  @@index([userId, rating])
+}
+
+/// Ingrédient canonique, dédupliqué par nom normalisé.
+/// Sert de pivot pour regrouper la liste de courses entre recettes.
+model Ingredient {
+  id   String @id @default(cuid())
+  /// Nom affiché, tel que saisi la première fois : "Oignon rouge"
+  name String
+  /// Clé de regroupement : minuscules, sans accents, singularisée : "oignon rouge"
+  slug String @unique
+
+  /// Rayon de courses, pour trier la liste : "légumes", "crèmerie"…
+  aisle String?
+
+  createdAt DateTime @default(now())
+
+  recipeIngredients RecipeIngredient[]
+  shoppingItems     ShoppingListItem[]
+}
+
+model RecipeIngredient {
+  id String @id @default(cuid())
+
+  /// null = quantité non précisée dans la source. Ne jamais inventer.
+  quantity Float?
+  /// Unité normalisée ("g", "ml", "c. à soupe"…) ou null.
+  unit String?
+  /// Libellé tel qu'il doit s'afficher : "filets de poulet"
+  label String?
+  /// Préparation : "émincé", "à température ambiante"
+  preparation String?
+  /// Note libre, ex. "quantité non précisée"
+  note String?
+
+  /// Regroupement facultatif dans la fiche : "Poulet", "Sauce"
+  section String?
+
+  position Int @default(0)
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([recipeId, position])
+  @@index([ingredientId])
+}
+
+model RecipeStep {
+  id String @id @default(cuid())
+
+  /// 1-based, ordre d'affichage et de progression en Mode Cuisine.
+  order       Int
+  /// Titre court facultatif : "Paner le poulet"
+  title       String?
+  instruction String
+
+  /// Minutes — alimente le minuteur du Mode Cuisine.
+  duration Int?
+  /// Degrés Celsius.
+  temperature Int?
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, order])
+  @@index([recipeId])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+  /// "ingredient" | "cuisine" | "regime" | "libre" — pour grouper les filtres.
+  kind String @default("libre")
+
+  recipes RecipeTag[]
+}
+
+model RecipeTag {
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, tagId])
+  @@index([tagId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+}
+
+model ShoppingList {
+  id        String   @id @default(cuid())
+  name      String   @default("Ma liste de courses")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items ShoppingListItem[]
+
+  @@index([userId])
+}
+
+model ShoppingListItem {
+  id String @id @default(cuid())
+
+  /// Quantité cumulée ; null si au moins une source ne précisait pas de quantité.
+  quantity Float?
+  unit     String?
+  /// Libellé affiché, dénormalisé pour rester lisible même si l'Ingredient change.
+  label    String
+  note     String?
+
+  checked Boolean @default(false)
+
+  /// Ajout manuel (pas issu d'une recette).
+  isManual Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  listId String
+  list   ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  ingredientId String?
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
+
+  /// Recette d'origine, pour pouvoir retirer une recette de la liste.
+  recipeId String?
+  recipe   Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([listId])
+  @@index([listId, ingredientId, unit])
+}
+
+/// Trace d'un import. Conservée même en cas d'échec : c'est le journal qui
+/// permet de dire honnêtement à l'utilisateur ce qui s'est passé, et de
+/// reprendre un import en saisie manuelle.
+model Import {
+  id       String @id @default(cuid())
+  url      String
+  platform String
+
+  /// "pending" | "fetching" | "transcribing" | "generating" | "ready"
+  /// | "failed" | "saved" — voir IMPORT_STATUSES.
+  status String @default("pending")
+
+  /// Métadonnées brutes de l'adapter (JSON texte).
+  rawMetadata String?
+  /// Texte extrait (description, article nettoyé).
+  rawText     String?
+  /// Transcription / sous-titres si disponibles.
+  transcript  String?
+
+  /// Recette générée non encore enregistrée (JSON texte), pour la prévisualisation.
+  draft String?
+
+  /// Code d'erreur applicatif ("PRIVATE_CONTENT", "NO_RECIPE_FOUND"…)
+  errorCode    String?
+  /// Message lisible affiché à l'utilisateur.
+  error        String?
+  /// true si l'utilisateur peut débloquer en collant le texte à la main.
+  canRetryManually Boolean @default(false)
+
+  /// Journal des étapes réellement franchies (JSON texte) — alimente l'UI de
+  /// progression. Jamais de fausse étape : écrit uniquement après coup.
+  steps String @default("[]")
+
+  /// true si la vidéo a dû être téléchargée et analysée visuellement.
+  videoAnalyzed Boolean @default(false)
+
+  aiProvider String?
+  aiModel    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Renseigné une fois la recette enregistrée depuis cet import.
+  recipeId String?
+  recipe   Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
