@@ -8,6 +8,12 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" pour le dev local (Windows/macOS/Linux) ; "debian-openssl-3.0.x"
+  // pour l'image Docker de production (node:20-bookworm-slim avec ffmpeg
+  // installé résout vers OpenSSL 3.0 au runtime, alors que le stage de build,
+  // plus nu, détecte parfois OpenSSL 1.1 — embarquer les deux moteurs évite
+  // le mismatch plutôt que de dépendre de la détection automatique).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
