@@ -36,16 +36,25 @@ FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Le paquet apt `ffmpeg` tire ~100 dépendances multimédia (codecs audio pro,
+# X11, OpenGL...) inutiles ici : storage.ts n'en extrait qu'une frame image
+# (voir extractPoster). Un binaire statique officiel ne contient que ffmpeg
+# lui-même, sans ces bibliothèques — la majeure partie du poids économisé.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        python3 \
-       ffmpeg \
        curl \
+       xz-utils \
        ca-certificates \
        openssl \
+    && curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz \
+    && tar -xJf /tmp/ffmpeg.tar.xz -C /tmp \
+    && mv /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ffmpeg \
+    && chmod a+rx /usr/local/bin/ffmpeg \
+    && rm -rf /tmp/ffmpeg* \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
-    && apt-get purge -y curl \
+    && apt-get purge -y curl xz-utils \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
