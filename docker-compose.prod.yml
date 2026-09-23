@@ -1,16 +1,17 @@
 # Compose de déploiement : utilisé tel quel sur le VPS. Contrairement à
 # docker-compose.yml (qui build les images localement, pratique en dev), ce
 # fichier ne fait que `pull` les images déjà construites par GitHub Actions et
-# poussées sur ghcr.io — le VPS n'a jamais besoin du code source.
+# poussées sur ghcr.io — le VPS n'a jamais besoin du code source applicatif.
 #
-# Usage sur le VPS (voir DEPLOY.md) :
-#   docker compose -f docker-compose.prod.yml --env-file .env.deploy up -d
+# Déploiement (voir DEPLOY.md) — manuel, en SSH sur le VPS :
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 
 name: easyrecette
 
 services:
   server:
-    image: ${SERVER_IMAGE}
+    image: ghcr.io/gyrese/easyrecette-server:latest
     restart: unless-stopped
     env_file:
       - server/.env
@@ -30,7 +31,7 @@ services:
       start_period: 10s
 
   client:
-    image: ${CLIENT_IMAGE}
+    image: ghcr.io/gyrese/easyrecette-client:latest
     restart: unless-stopped
     depends_on:
       - server

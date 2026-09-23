@@ -1,4 +1,4 @@
-name: Build & Deploy
+name: Build & Push
 
 on:
   push:
@@ -10,15 +10,18 @@ env:
   IMAGE_SERVER: ${{ github.repository }}-server
   IMAGE_CLIENT: ${{ github.repository }}-client
 
+# Ce workflow builde les images et les pousse sur GitHub Container Registry.
+# Le déploiement sur le VPS reste manuel : connexion SSH puis
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+# (voir DEPLOY.md).
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      server-image: ${{ steps.meta.outputs.server-image }}
-      client-image: ${{ steps.meta.outputs.client-image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,8 +39,6 @@ jobs:
           CLIENT_IMAGE="${REGISTRY}/$(echo "${IMAGE_CLIENT}" | tr '[:upper:]' '[:lower:]'):${GITHUB_SHA::12}"
           SERVER_IMAGE_LATEST="${REGISTRY}/$(echo "${IMAGE_SERVER}" | tr '[:upper:]' '[:lower:]'):latest"
           CLIENT_IMAGE_LATEST="${REGISTRY}/$(echo "${IMAGE_CLIENT}" | tr '[:upper:]' '[:lower:]'):latest"
-          echo "server-image=${SERVER_IMAGE}" >> "$GITHUB_OUTPUT"
-          echo "client-image=${CLIENT_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "SERVER_IMAGE=${SERVER_IMAGE}" >> "$GITHUB_ENV"
           echo "CLIENT_IMAGE=${CLIENT_IMAGE}" >> "$GITHUB_ENV"
           echo "SERVER_IMAGE_LATEST=${SERVER_IMAGE_LATEST}" >> "$GITHUB_ENV"
@@ -64,32 +65,3 @@ jobs:
           tags: ${{ env.CLIENT_IMAGE }},${{ env.CLIENT_IMAGE_LATEST }}
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to VPS over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          # `envs` transmet les tags d'image poussés à l'instant au shell
-          # distant, pour que le VPS tire exactement ce qui vient d'être buildé
-          # plutôt qu'un `latest` potentiellement en cours de publication.
-          envs: SERVER_IMAGE,CLIENT_IMAGE
-          script: |
-            set -e
-            cd "${{ secrets.VPS_DEPLOY_PATH }}"
-            git pull --ff-only
-            echo "${{ secrets.GHCR_PULL_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            echo "SERVER_IMAGE=${SERVER_IMAGE}" > .env.deploy
-            echo "CLIENT_IMAGE=${CLIENT_IMAGE}" >> .env.deploy
-            docker compose -f docker-compose.prod.yml --env-file .env.deploy pull
-            docker compose -f docker-compose.prod.yml --env-file .env.deploy up -d --remove-orphans
-            docker image prune -f
-        env:
-          SERVER_IMAGE: ${{ needs.build-and-push.outputs.server-image }}
-          CLIENT_IMAGE: ${{ needs.build-and-push.outputs.client-image }}
