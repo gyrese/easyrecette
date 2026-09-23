@@ -51,8 +51,10 @@ RUN apt-get update \
 # Utilisateur non-root : bonne pratique pour un service exposé sur un VPS.
 RUN groupadd --system app && useradd --system --gid app --create-home app
 
+# npm workspaces hoiste toutes les dépendances vers /app/node_modules : il
+# n'existe pas de server/node_modules séparé (Node résout en remontant les
+# dossiers parents, donc /app/node_modules reste visible depuis /app/server).
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/server/node_modules ./server/node_modules
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/server/prisma ./server/prisma
 COPY --from=build /app/server/package.json ./server/package.json
@@ -70,4 +72,5 @@ EXPOSE 4000
 
 # db push avant démarrage : crée/synchronise le fichier SQLite sur le volume
 # monté s'il n'existe pas encore (équivalent conteneurisé de `npm run db:push`).
-CMD ["sh", "-c", "node_modules/.bin/prisma db push --skip-generate && node dist/index.js"]
+# Le binaire prisma vit dans /app/node_modules/.bin (hoisté, voir plus haut).
+CMD ["sh", "-c", "/app/node_modules/.bin/prisma db push --skip-generate && node dist/index.js"]
