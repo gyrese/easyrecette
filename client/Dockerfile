@@ -24,6 +24,10 @@ RUN npm run build --workspace client
 FROM nginx:1.27-alpine AS runtime
 
 COPY client/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/client/dist /usr/share/nginx/html
+# --chmod force des permissions lisibles par tous : sans ça, les fichiers
+# copiés depuis le stage build peuvent hériter de permissions trop
+# restrictives et nginx (processus non-root sur cette image) reçoit un 403
+# en tentant de les lire.
+COPY --from=build --chmod=755 /app/client/dist /usr/share/nginx/html
 
 EXPOSE 80
