@@ -404,7 +404,10 @@ export function LibraryPage() {
           }
         />
       ) : (
-        <div className="mt-9 grid gap-6.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))]">
+        // `auto-fill` plutôt que `auto-fit` : conserve les pistes vides au
+        // lieu de les effondrer, pour que les cartes gardent leur taille
+        // naturelle même avec peu de recettes (voir HomePage.tsx).
+        <div className="mt-9 grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-6.5">
           {recipes.map((recipe, index) => (
             <RecipeCard
               key={recipe.id}

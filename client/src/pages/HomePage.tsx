@@ -119,10 +119,13 @@ function RecentRecipes() {
         </Link>
       </div>
 
-      {/* `auto-fit` + `minmax(min(100%,250px),1fr)` : la maquette ne fixe pas
-          un nombre de colonnes, elle laisse les fiches se ranger d'elles-mêmes
-          et tomber à une colonne sous 250px de large. */}
-      <div className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(min(100%,250px),1fr))] items-start gap-6.5">
+      {/* `auto-fill` + `minmax(min(100%,250px),1fr)` : la grille ne fixe pas
+          un nombre de colonnes, les fiches se rangent d'elles-mêmes et
+          tombent à une colonne sous 250px de large. `auto-fill` (plutôt que
+          `auto-fit`) conserve les pistes vides au lieu de les effondrer :
+          avec une ou deux recettes, les cartes gardent leur taille naturelle
+          au lieu de s'étirer pour combler toute la largeur disponible. */}
+      <div className="mt-9 grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] items-start gap-6.5">
         {recipes.map((recipe, index) => (
           <RecipeCard key={recipe.id} recipe={recipe} index={index} />
         ))}
