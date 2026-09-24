@@ -44,8 +44,65 @@ nano server/.env
 - `CORS_ORIGIN` → le domaine public réel, ex. `https://easyrecette.mondomaine.fr`
   (ou `http://IP_DU_VPS` sans domaine).
 - Au moins une clé IA (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY` ou `OPENAI_API_KEY`).
+- **Connexion Google** — obligatoire pour que les comptes fonctionnent :
+  `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_SERVER_URL`,
+  `PUBLIC_APP_URL` (voir la section suivante).
+- **`SESSION_SECRET`** — obligatoire en production, le serveur refuse de
+  démarrer sans lui. À générer **une seule fois** et à conserver : le changer
+  déconnecte tout le monde.
+  ```bash
+  node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+  ```
 - `DATABASE_URL` et `NODE_ENV` sont **déjà fixés** dans `docker-compose.prod.yml`
   et n'ont pas besoin d'être définis ici (une valeur y serait ignorée).
+
+### Configurer la connexion Google
+
+Sans ces clés, le serveur démarre mais la connexion est indisponible — et avec
+elle tout ce qui touche au fichier personnel (import, recettes, courses). Seule
+la page Découvrir reste consultable.
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → créer ou
+   choisir un projet.
+2. **APIs & Services → OAuth consent screen** : type « External », renseigner
+   le nom de l'application et l'e-mail de contact. Tant que l'écran est en mode
+   « Testing », seuls les comptes ajoutés dans **Test users** peuvent se
+   connecter — passer en « Published » pour ouvrir à tous.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   type **Web application**.
+4. Dans **Authorized redirect URIs**, coller l'adresse **exacte** (Google
+   compare caractère par caractère, le `https` et l'absence de `/` final
+   comptent) :
+   ```
+   https://easyrecette.mondomaine.fr/api/auth/google/callback
+   ```
+5. Reporter les valeurs dans `server/.env` :
+   ```bash
+   GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxx
+   PUBLIC_SERVER_URL="https://easyrecette.mondomaine.fr"
+   PUBLIC_APP_URL="https://easyrecette.mondomaine.fr"
+   SESSION_SECRET=<la valeur générée plus haut>
+   ```
+
+En production, `PUBLIC_SERVER_URL` et `PUBLIC_APP_URL` sont identiques : nginx
+sert le front et proxifie `/api` vers le serveur sur le même domaine. Elles ne
+diffèrent qu'en développement (`:4000` et `:5173`).
+
+Le cookie de session est posé avec `secure` dès que `NODE_ENV=production` : le
+site **doit** être servi en HTTPS, sinon le navigateur refuse le cookie et la
+connexion échoue sans message clair. Si tu déploies derrière un reverse proxy
+TLS (Caddy, Traefik, nginx avec Let's Encrypt), rien de plus à faire.
+
+### Première connexion et reprise des recettes existantes
+
+Si la base contient déjà des recettes créées avant l'authentification (compte
+technique `local@cookbook.app`), le **premier** utilisateur qui se connecte en
+hérite : ses recettes deviennent les siennes, et restent privées. Les suivants
+démarrent sur un fichier vide.
+
+Connecte-toi donc en premier avec ton propre compte Google avant d'ouvrir le
+site à d'autres — sinon c'est le premier arrivé qui récupère la bibliothèque.
 
 ### Rendre les images GHCR accessibles
 

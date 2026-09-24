@@ -273,3 +273,73 @@ export const IconGlobe = (props: IconProps) => (
     <path d="M12 3.5a13 13 0 0 1 0 17 13 13 0 0 1 0-17Z" />
   </Base>
 );
+
+/**
+ * Cadenas : marque une fiche gardée pour soi. C'est l'état par défaut, donc
+ * l'icône reste discrète — c'est le globe qui signale l'exception.
+ */
+export const IconLock = (props: IconProps) => (
+  <Base {...props}>
+    <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+  </Base>
+);
+
+export const IconUser = (props: IconProps) => (
+  <Base {...props}>
+    <circle cx="12" cy="8.5" r="3.8" />
+    <path d="M4.8 20.5a7.4 7.4 0 0 1 14.4 0" />
+  </Base>
+);
+
+/** Sortie : la flèche quitte le cadre. */
+export const IconLogout = (props: IconProps) => (
+  <Base {...props}>
+    <path d="M14.5 4.5h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3" />
+    <path d="M10 12h9.5" />
+    <path d="M13 8.5 9.5 12l3.5 3.5" />
+  </Base>
+);
+
+/** Duplication : une fiche qui passe dans un autre fichier. */
+export const IconCopy = (props: IconProps) => (
+  <Base {...props}>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M15 5.5H6a2 2 0 0 0-2 2v9" />
+  </Base>
+);
+
+/**
+ * Logo Google.
+ *
+ * Seule icône du jeu à ne pas suivre le trait maison : c'est une marque, et
+ * les règles de Google demandent son « G » quadrichrome tel quel. On garde
+ * donc les couleurs officielles et un tracé plein, sans `Base`.
+ */
+export const IconGoogle = (props: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    width="1em"
+    height="1em"
+    aria-hidden="true"
+    focusable="false"
+    {...props}
+  >
+    <path
+      fill="#4285F4"
+      d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.4a4.62 4.62 0 0 1-2 3.03v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.38Z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 22c2.7 0 4.96-.9 6.64-2.4l-3.24-2.51c-.9.6-2.05.96-3.4.96a5.98 5.98 0 0 1-5.62-4.13H3.03v2.6A10 10 0 0 0 12 22Z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M6.38 13.92a6 6 0 0 1 0-3.84v-2.6H3.03a10 10 0 0 0 0 9.04l3.35-2.6Z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 5.98c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.58 9.58 0 0 0 12 2a10 10 0 0 0-8.97 5.48l3.35 2.6A5.98 5.98 0 0 1 12 5.98Z"
+    />
+  </svg>
+);

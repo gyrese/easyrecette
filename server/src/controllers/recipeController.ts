@@ -1,11 +1,13 @@
 import type { Request, Response } from 'express';
-import { getCurrentUserId } from '../database/client.js';
+import { currentUserId, optionalUserId } from '../middleware/auth.js';
 import * as repo from '../database/recipeRepository.js';
 import {
+  discoverQuerySchema,
   rateRecipeSchema,
   recipeQuerySchema,
   saveRecipeSchema,
   updateRecipeSchema,
+  visibilitySchema,
 } from '../schemas/recipe.js';
 import { isSupportedPhotoType, MAX_PHOTO_BYTES } from '../services/media/storage.js';
 import { appError } from '../utils/errors.js';
@@ -27,19 +29,29 @@ export async function list(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const result = await repo.listRecipes(userId, parsed.data);
   res.json(result);
 }
 
-export async function facets(_req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+export async function facets(req: Request, res: Response): Promise<void> {
+  const userId = currentUserId(req);
   res.json(await repo.getFilterFacets(userId));
 }
 
+/**
+ * Lecture d'une fiche.
+ *
+ * Route ouverte : elle sert aussi bien sa propre recette qu'une fiche publique
+ * partagée par quelqu'un d'autre, y compris à un visiteur sans compte. Le
+ * périmètre est décidé par la requête SQL (voir getVisibleRecipe), pas ici.
+ *
+ * Une recette privée d'autrui répond 404, pas 403 : dire « interdit »
+ * confirmerait son existence à qui essaie des identifiants au hasard.
+ */
 export async function getOne(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
-  const recipe = await repo.getRecipe(userId, req.params['id'] ?? '');
+  const viewerId = optionalUserId(req);
+  const recipe = await repo.getVisibleRecipe(viewerId, req.params['id'] ?? '');
 
   if (!recipe) {
     throw appError('NOT_FOUND', { message: "Cette recette n'existe pas.", status: 404 });
@@ -60,7 +72,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.createRecipe(userId, parsed.data);
   res.status(201).json(recipe);
 }
@@ -77,7 +89,7 @@ export async function update(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.updateRecipe(userId, req.params['id'] ?? '', parsed.data);
 
   if (!recipe) {
@@ -88,7 +100,7 @@ export async function update(req: Request, res: Response): Promise<void> {
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const deleted = await repo.deleteRecipe(userId, req.params['id'] ?? '');
 
   if (!deleted) {
@@ -119,7 +131,7 @@ export async function rate(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.rateRecipe(userId, req.params['id'] ?? '', parsed.data);
 
   if (!recipe) {
@@ -168,7 +180,7 @@ export async function uploadPhoto(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.setUserPhoto(userId, req.params['id'] ?? '', body, mime);
 
   if (!recipe) {
@@ -180,7 +192,7 @@ export async function uploadPhoto(req: Request, res: Response): Promise<void> {
 
 /** Retire la photo : la fiche retrouve l'image de sa source. */
 export async function removePhoto(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.removeUserPhoto(userId, req.params['id'] ?? '');
 
   if (!recipe) {
@@ -191,7 +203,7 @@ export async function removePhoto(req: Request, res: Response): Promise<void> {
 }
 
 export async function favorite(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const recipe = await repo.toggleFavorite(userId, req.params['id'] ?? '');
 
   if (!recipe) {
@@ -199,4 +211,74 @@ export async function favorite(req: Request, res: Response): Promise<void> {
   }
 
   res.json(recipe);
+}
+
+// ---------------------------------------------------------------------------
+// Partage public
+// ---------------------------------------------------------------------------
+
+/**
+ * Publie ou dépublie une recette.
+ *
+ * Réservé au propriétaire : `setVisibility` filtre sur `userId`, donc une
+ * tentative sur la fiche d'autrui répond 404 comme si elle n'existait pas.
+ */
+export async function setVisibility(req: Request, res: Response): Promise<void> {
+  const parsed = visibilitySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw appError('INVALID_INPUT', {
+      message: 'Indique si la recette doit être publique ou privée.',
+      detail: parsed.error.issues.map((issue) => issue.path.join('.')).join(', '),
+      status: 422,
+    });
+  }
+
+  const userId = currentUserId(req);
+  const recipe = await repo.setVisibility(userId, req.params['id'] ?? '', parsed.data);
+
+  if (!recipe) {
+    throw appError('NOT_FOUND', { message: "Cette recette n'existe pas.", status: 404 });
+  }
+
+  res.json(recipe);
+}
+
+/** Page Découvrir. Ouverte : un visiteur sans compte peut parcourir. */
+export async function discover(req: Request, res: Response): Promise<void> {
+  const parsed = discoverQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    throw appError('INVALID_INPUT', {
+      message: 'Paramètres de recherche invalides.',
+      detail: parsed.error.issues.map((issue) => issue.path.join('.')).join(', '),
+    });
+  }
+
+  const viewerId = optionalUserId(req);
+  res.json(await repo.listPublicRecipes(viewerId, parsed.data));
+}
+
+export async function discoverFacets(_req: Request, res: Response): Promise<void> {
+  res.json(await repo.getPublicFacets());
+}
+
+/**
+ * Enregistre une copie d'une recette publique dans son propre fichier.
+ *
+ * Copie plutôt que simple mise en favori : une fois enregistrée, la recette
+ * est à soi — modifiable, notable, et elle survit à la dépublication de
+ * l'originale. Mettre un lien en favori exposerait à voir une fiche
+ * disparaître de sa propre bibliothèque du jour au lendemain.
+ */
+export async function copy(req: Request, res: Response): Promise<void> {
+  const userId = currentUserId(req);
+  const recipe = await repo.copyPublicRecipe(userId, req.params['id'] ?? '');
+
+  if (!recipe) {
+    throw appError('NOT_FOUND', {
+      message: "Cette recette n'est pas ou plus partagée.",
+      status: 404,
+    });
+  }
+
+  res.status(201).json(recipe);
 }

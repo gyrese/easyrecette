@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { IconBook, IconCart, IconSparkle } from './Icons';
+import { useAuth } from '../lib/auth';
+import { AccountMenu } from './AccountMenu';
+import { IconBook, IconCart, IconGlobe, IconSparkle } from './Icons';
 
 /**
  * Coquille de l'application.
@@ -16,14 +18,26 @@ import { IconBook, IconCart, IconSparkle } from './Icons';
  *  - desktop : un segment unique cerné de noir dans l'en-tête, où l'onglet
  *    actif s'inverse en noir plein.
  *
- * Volontairement trois entrées, pas plus : importer, consulter, faire les
- * courses. Tout le reste est atteignable depuis ces trois-là.
+ * La navigation dépend de l'état de connexion :
+ *  - connecté : importer, ses recettes, découvrir, courses ;
+ *  - anonyme : découvrir seulement. Montrer « Mes recettes » à qui n'a pas de
+ *    compte serait une promesse qui mène à un écran de connexion — autant
+ *    proposer directement ce qui marche, et laisser le bouton du compte faire
+ *    son travail.
+ *
+ * Quatre entrées maximum : au-delà, la barre basse du téléphone devient
+ * illisible et chaque cible passe sous les 44 px recommandés.
  */
 
-const NAV = [
+const NAV_SIGNED_IN = [
   { to: '/', label: 'Importer', icon: IconSparkle, exact: true },
   { to: '/recipes', label: 'Mes recettes', icon: IconBook, exact: false },
+  { to: '/discover', label: 'Découvrir', icon: IconGlobe, exact: false },
   { to: '/shopping-list', label: 'Courses', icon: IconCart, exact: false },
+] as const;
+
+const NAV_ANONYMOUS = [
+  { to: '/discover', label: 'Découvrir', icon: IconGlobe, exact: false },
 ] as const;
 
 /** Les brèves du bandeau. Répétées deux fois pour un défilement sans couture. */
@@ -53,6 +67,12 @@ function TickerRun() {
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  /* Pendant le chargement on affiche la navigation d'invité : elle est un
+     sous-ensemble de l'autre, donc rien ne disparaît à l'arrivée de la
+     session — des entrées s'ajoutent. L'inverse ferait clignoter la barre. */
+  const nav = user ? NAV_SIGNED_IN : NAV_ANONYMOUS;
 
   return (
     <div className="relative flex min-h-dvh flex-col">
@@ -86,7 +106,7 @@ export function Layout() {
           </NavLink>
 
           <nav className="hidden items-center overflow-hidden rounded-control border-[1.5px] border-rule-strong sm:flex">
-            {NAV.map(({ to, label, exact }, index) => (
+            {nav.map(({ to, label, exact }, index) => (
               <NavLink
                 key={to}
                 to={to}
@@ -108,13 +128,20 @@ export function Layout() {
 
           <div className="flex-1" />
 
-          <button
-            type="button"
-            onClick={() => navigate('/recipe/new')}
-            className="press sheen inline-flex min-h-11 items-center gap-2 rounded-control border-[1.5px] border-rule-strong bg-lime px-[18px] py-[11px] font-mono text-[11px] font-medium tracking-[0.14em] text-ink uppercase"
-          >
-            + Nouvelle fiche
-          </button>
+          {/* La création n'a de sens qu'avec un fichier où ranger la fiche :
+              proposée à un visiteur anonyme, elle ne mènerait qu'à l'écran de
+              connexion. Le menu du compte, lui, est toujours là. */}
+          {user && (
+            <button
+              type="button"
+              onClick={() => navigate('/recipe/new')}
+              className="press sheen inline-flex min-h-11 items-center gap-2 rounded-control border-[1.5px] border-rule-strong bg-lime px-[18px] py-[11px] font-mono text-[11px] font-medium tracking-[0.14em] text-ink uppercase max-sm:hidden"
+            >
+              + Nouvelle fiche
+            </button>
+          )}
+
+          <AccountMenu />
         </div>
       </header>
 
@@ -125,7 +152,7 @@ export function Layout() {
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-rule-strong bg-paper-raised/95 backdrop-blur-lg sm:hidden">
         <div className="flex">
-          {NAV.map(({ to, label, icon: Icon, exact }, index) => (
+          {nav.map(({ to, label, icon: Icon, exact }, index) => (
             <NavLink
               key={to}
               to={to}

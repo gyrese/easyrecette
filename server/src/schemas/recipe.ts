@@ -202,6 +202,25 @@ export const updateRecipeSchema = generatedRecipeSchema
 export type UpdateRecipeInput = z.infer<typeof updateRecipeSchema>;
 
 /**
+ * Publication d'une recette.
+ *
+ * Endpoint dédié plutôt qu'un champ de `updateRecipeSchema` : publier n'est
+ * pas corriger une faute de frappe. C'est un geste qui rend une fiche
+ * visible par des inconnus, et il doit être impossible de le déclencher par
+ * inadvertance en enregistrant un formulaire d'édition.
+ */
+export const visibilitySchema = z.object({
+  isPublic: z.boolean(),
+  /**
+   * Nom d'auteur à afficher, posé au moment de la première publication.
+   * Enregistré sur le compte, pas sur la recette : on ne publie pas sous
+   * trois pseudos différents selon la fiche.
+   */
+  displayName: z.string().trim().max(60).nullable().optional(),
+});
+export type VisibilityInput = z.infer<typeof visibilitySchema>;
+
+/**
  * Notation d'une recette essayée.
  *
  * `rating` à null n'est pas « zéro étoile » mais « je retire ma note » : la
@@ -251,3 +270,24 @@ export const recipeQuerySchema = z.object({
   skip: z.coerce.number().int().min(0).default(0),
 });
 export type RecipeQuery = z.infer<typeof recipeQuerySchema>;
+
+/**
+ * Requête de la page Découvrir.
+ *
+ * Volontairement plus pauvre que `recipeQuerySchema` : pas de favori, de note
+ * ni de « déjà essayée », qui n'ont de sens que sur son propre fichier. On ne
+ * partage pas ses notes personnelles en publiant une recette.
+ */
+export const discoverQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  difficulty: z.enum(DIFFICULTIES).optional(),
+  cuisine: z.string().trim().max(80).optional(),
+  tag: z.string().trim().max(60).optional(),
+  maxTime: z.coerce.number().int().min(1).max(10_000).optional(),
+  /** 'recent' = dernières publiées, 'popular' = les plus copiées. */
+  sort: z.enum(['recent', 'title', 'time', 'popular']).default('recent'),
+  take: z.coerce.number().int().min(1).max(100).default(60),
+  skip: z.coerce.number().int().min(0).default(0),
+});
+export type DiscoverQuery = z.infer<typeof discoverQuerySchema>;

@@ -116,6 +116,30 @@ export interface Recipe extends GeneratedRecipe {
   createdAt: string;
   updatedAt: string;
   importedAt: string | null;
+
+  /** Partagée avec tout le monde, connecté ou non. */
+  isPublic: boolean;
+  /** Date de la première publication. Sert de tri sur la page Découvrir. */
+  publishedAt: string | null;
+  /** Nombre de fois que la fiche a été enregistrée par d'autres. */
+  copyCount: number;
+  /** Auteur, affiché sur les fiches partagées. */
+  author: RecipeAuthor;
+  /** Renseigné quand la fiche est une copie d'une recette publique. */
+  copiedFromId: string | null;
+  /**
+   * false quand on consulte la fiche publique de quelqu'un d'autre. Le
+   * serveur neutralise alors ses annotations privées (note, favori,
+   * commentaire d'essai) : ce sont ses jugements, pas du contenu partagé.
+   */
+  isOwner: boolean;
+}
+
+export interface RecipeAuthor {
+  id: string;
+  /** Nom d'affichage choisi, à défaut le nom du compte, à défaut « Anonyme ». */
+  name: string;
+  avatarUrl: string | null;
 }
 
 /** Nombre maximal d'étoiles. Le barème tient en une main. */
@@ -216,6 +240,42 @@ export interface RecipeFilters {
   minRating?: number;
   maxTime?: number;
   sort?: 'recent' | 'title' | 'time' | 'favorite' | 'rating';
+}
+
+// --- Compte ---
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  /** Nom d'auteur choisi pour les recettes publiées. */
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface AuthState {
+  /** null = visiteur non connecté. Ce n'est pas une erreur. */
+  user: AuthUser | null;
+  /** false = le serveur n'a pas de clés Google : la connexion est indisponible. */
+  googleConfigured: boolean;
+}
+
+// --- Découvrir ---
+
+/**
+ * Filtres de la page Découvrir.
+ *
+ * Volontairement plus pauvres que `RecipeFilters` : favori, note et « déjà
+ * essayée » n'ont de sens que sur son propre fichier.
+ */
+export interface DiscoverFilters {
+  q?: string;
+  category?: Category;
+  difficulty?: Difficulty;
+  cuisine?: string;
+  tag?: string;
+  maxTime?: number;
+  sort?: 'recent' | 'title' | 'time' | 'popular';
 }
 
 // --- Liste de courses ---

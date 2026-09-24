@@ -1,5 +1,8 @@
 import type {
+  AuthState,
+  AuthUser,
   DetectResult,
+  DiscoverFilters,
   Facets,
   GeneratedRecipe,
   ImportResult,
@@ -46,6 +49,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${BASE}${path}`, {
       ...init,
+      /*
+       * Le cookie de session doit accompagner chaque requête. `same-origin`
+       * suffirait en production (le front et l'API partagent l'hôte) mais pas
+       * en développement, où Vite proxifie : `include` couvre les deux cas.
+       */
+      credentials: 'include',
       headers: {
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...init?.headers,
@@ -117,6 +126,56 @@ export const api = {
 
   getImport: (id: string) => request<ImportResult & { rawText: string | null }>(`/import/${id}`),
 
+  // --- Compte ---
+
+  /**
+   * État de connexion. Répond toujours 200, avec `user: null` si personne
+   * n'est connecté : c'est un état normal, pas une erreur.
+   */
+  me: () => request<AuthState>('/auth/me'),
+
+  /**
+   * Départ vers Google.
+   *
+   * Une navigation complète, pas un fetch : le flux OAuth passe par des
+   * redirections que seul le navigateur peut suivre. `next` est la page où
+   * revenir après connexion ; le serveur la vérifie (chemin interne
+   * uniquement) avant de l'utiliser.
+   */
+  loginUrl: (next = '/') => `${BASE}/auth/google?next=${encodeURIComponent(next)}`,
+
+  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+
+  /** Ferme la session sur tous les appareils. */
+  logoutEverywhere: () => request<{ sessions: number }>('/auth/logout-all', { method: 'POST' }),
+
+  /** Change le nom d'auteur affiché sur les recettes publiées. */
+  updateProfile: (displayName: string | null) =>
+    request<{ user: AuthUser }>('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName }),
+    }),
+
+  deleteAccount: () => request<void>('/auth/account', { method: 'DELETE' }),
+
+  // --- Découvrir ---
+
+  discover: (filters: DiscoverFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.q) params.set('q', filters.q);
+    if (filters.category) params.set('category', filters.category);
+    if (filters.difficulty) params.set('difficulty', filters.difficulty);
+    if (filters.cuisine) params.set('cuisine', filters.cuisine);
+    if (filters.tag) params.set('tag', filters.tag);
+    if (filters.maxTime) params.set('maxTime', String(filters.maxTime));
+    if (filters.sort) params.set('sort', filters.sort);
+
+    const query = params.toString();
+    return request<RecipeListResponse>(`/discover${query ? `?${query}` : ''}`);
+  },
+
+  discoverFacets: () => request<Facets>('/discover/facets'),
+
   // --- Recettes ---
 
   listRecipes: (filters: RecipeFilters = {}) => {
@@ -182,6 +241,23 @@ export const api = {
 
   removeRecipePhoto: (id: string) =>
     request<Recipe>(`/recipes/${id}/photo`, { method: 'DELETE' }),
+
+  /**
+   * Publie une recette, ou la repasse en privé.
+   *
+   * `displayName` n'est envoyé qu'à la première publication, quand
+   * l'utilisateur choisit sous quel nom il partage.
+   */
+  setRecipeVisibility: (id: string, isPublic: boolean, displayName?: string | null) =>
+    request<Recipe>(`/recipes/${id}/visibility`, {
+      method: 'POST',
+      body: JSON.stringify(
+        displayName === undefined ? { isPublic } : { isPublic, displayName },
+      ),
+    }),
+
+  /** Enregistre une copie d'une recette partagée dans son propre fichier. */
+  copyRecipe: (id: string) => request<Recipe>(`/recipes/${id}/copy`, { method: 'POST' }),
 
   // --- Liste de courses ---
 

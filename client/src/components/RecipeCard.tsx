@@ -9,9 +9,9 @@ import {
 } from '../lib/format';
 import type { Recipe } from '../lib/types';
 import { PLATFORM_LABELS, RATING_LABELS } from '../lib/types';
-import { IconCheck, IconClose, IconHeart, IconTrash } from './Icons';
+import { IconCheck, IconClose, IconCopy, IconGlobe, IconHeart, IconTrash } from './Icons';
 import { Stars } from './RecipeRating';
-import { RecipeImage } from './ui';
+import { RecipeImage, Spinner } from './ui';
 
 /**
  * Carte de recette.
@@ -39,6 +39,18 @@ interface Props {
   onToggleFavorite?: (id: string) => void;
   /** Absent = pas de poubelle : c'est le cas sur l'accueil (§lecture seule). */
   onDelete?: (id: string) => void;
+  /**
+   * Affiche l'auteur en pied de carte à la place de la provenance.
+   * Utilisé par la page Découvrir : devant la fiche d'un inconnu, savoir qui
+   * l'a partagée compte davantage que savoir de quel blog elle vient.
+   */
+  showAuthor?: boolean;
+  /**
+   * Reprise de la fiche dans son propre fichier. Absent = pas de bouton :
+   * c'est le cas partout sauf sur Découvrir.
+   */
+  onCopy?: (recipe: Recipe) => void;
+  copying?: boolean;
   index?: number;
 }
 
@@ -49,6 +61,9 @@ export function RecipeCard({
   onToggleSelect,
   onToggleFavorite,
   onDelete,
+  showAuthor = false,
+  onCopy,
+  copying = false,
   index = 0,
 }: Props) {
   const source = recipe.source.platform !== 'manual' ? recipe.source : null;
@@ -94,6 +109,17 @@ export function RecipeCard({
               {formatDurationShort(recipe.totalTime)}
             </span>
           )}
+
+          {/* Pastille « partagée », uniquement sur ses propres fiches : sur
+              la page Découvrir tout est public, la répéter cinquante fois
+              n'apprendrait rien. Elle occupe le coin bas droit, libre de
+              toute autre information. */}
+          {recipe.isPublic && recipe.isOwner && (
+            <span className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.1em] text-ink uppercase shadow-sm">
+              <IconGlobe className="text-xs" />
+              Partagée
+            </span>
+          )}
         </div>
 
         <div className="p-4">
@@ -115,14 +141,30 @@ export function RecipeCard({
           </h3>
 
           <div className="mt-3 flex items-center justify-between gap-2.5 border-t border-rule pt-2.5 font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
-            <span>{PLATFORM_LABELS[recipe.source.platform]}</span>
-            <span className="truncate">
-              {source?.author
-                ? source.author.startsWith('@')
-                  ? source.author
-                  : `@${source.author}`
-                : (source && hostOf(source.url)) ?? '—'}
-            </span>
+            {showAuthor ? (
+              <>
+                {/* « Par X » plutôt que la plateforme d'origine : c'est la
+                    personne qui a fait le travail de mise en fiche. La
+                    provenance reste visible en entier sur la fiche même. */}
+                <span className="truncate text-ink-soft">Par {recipe.author.name}</span>
+                {recipe.copyCount > 0 && (
+                  <span className="shrink-0">
+                    {recipe.copyCount} reprise{recipe.copyCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <span>{PLATFORM_LABELS[recipe.source.platform]}</span>
+                <span className="truncate">
+                  {source?.author
+                    ? source.author.startsWith('@')
+                      ? source.author
+                      : `@${source.author}`
+                    : (source && hostOf(source.url)) ?? '—'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </Link>
@@ -195,6 +237,27 @@ export function RecipeCard({
           </button>
         )}
       </div>
+
+      {/* --- Reprise dans son fichier ---
+          Toujours visible, contrairement aux contrôles du coin haut gauche :
+          c'est l'action principale de la page Découvrir, pas un geste
+          d'entretien. Elle ne s'affiche pas sur sa propre fiche — on ne se
+          copie pas soi-même. */}
+      {onCopy && !recipe.isOwner && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            onCopy(recipe);
+          }}
+          disabled={copying}
+          aria-label={`Enregistrer ${recipe.title} dans mes recettes`}
+          className="absolute top-2.5 left-2.5 z-10 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-paper/92 px-3 font-mono text-[10px] font-semibold tracking-[0.12em] text-ink uppercase shadow-sm backdrop-blur-sm transition-colors hover:bg-lime disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {copying ? <Spinner className="size-3" /> : <IconCopy />}
+          {copying ? 'Copie…' : 'Enregistrer'}
+        </button>
+      )}
 
       {/* --- Confirmation de suppression --- */}
       {confirming && (

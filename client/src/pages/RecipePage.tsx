@@ -5,6 +5,7 @@ import { ServingsStepper } from '../components/RecipeEditor';
 import { RecipeVideo } from '../components/RecipeVideo';
 import { RecipePhoto } from '../components/RecipePhoto';
 import { RatingPanel, Stars } from '../components/RecipeRating';
+import { PublicRecipeBanner, RecipeSharePanel } from '../components/RecipeSharePanel';
 import {
   IconArrowLeft,
   IconCart,
@@ -56,6 +57,18 @@ import { PLATFORM_LABELS, RATING_LABELS, type Recipe } from '../lib/types';
  *  - Cases à cocher sur les ingrédients : état purement local, remis à zéro
  *    au rechargement. C'est un aide-mémoire pendant qu'on rassemble les
  *    ingrédients, pas une donnée à conserver.
+ *
+ * La page a deux lectures, décidées par `recipe.isOwner` :
+ *
+ *  - sa propre fiche : tous les gestes d'entretien (modifier, noter, prendre
+ *    une photo, supprimer, partager) ;
+ *  - la fiche publique d'un autre : la recette et rien d'autre, plus un
+ *    bandeau d'attribution et le bouton qui l'enregistre chez soi. Les gestes
+ *    du propriétaire sont absents, pas désactivés — un bouton grisé sans
+ *    explication est une énigme, une absence est une réponse.
+ *
+ * Le serveur applique la même règle de son côté (voir getVisibleRecipe) : ce
+ * qui suit est du confort d'affichage, pas la barrière.
  */
 export function RecipePage() {
   const { id } = useParams<{ id: string }>();
@@ -262,27 +275,33 @@ export function RecipePage() {
         )}
 
         {/* Retour et favori : les deux seuls contrôles posés sur la photo. */}
+        {/* Le retour ramène d'où l'on vient vraiment : son fichier pour sa
+            propre fiche, la page Découvrir pour celle d'un autre. */}
         <Link
-          to="/recipes"
-          aria-label="Retour au fichier"
+          to={recipe.isOwner ? '/recipes' : '/discover'}
+          aria-label={recipe.isOwner ? 'Retour au fichier' : 'Retour à la découverte'}
           className="absolute top-5 left-5 z-3 grid size-10 place-items-center rounded-control border-[1.5px] border-paper/40 bg-ink/40 text-paper backdrop-blur-sm transition-colors hover:border-lime hover:bg-lime hover:text-ink"
         >
           <IconArrowLeft />
         </Link>
 
-        <button
-          type="button"
-          onClick={toggleFavorite}
-          aria-label={recipe.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          aria-pressed={recipe.isFavorite}
-          className={`absolute top-17 left-5 z-3 grid size-10 place-items-center rounded-control border-[1.5px] transition-colors ${
-            recipe.isFavorite
-              ? 'border-ember bg-ember text-ember-ink'
-              : 'border-paper/40 bg-ink/40 text-paper backdrop-blur-sm hover:border-ember hover:bg-ember hover:text-ember-ink'
-          }`}
-        >
-          <IconHeart filled={recipe.isFavorite} />
-        </button>
+        {/* Le favori n'a de sens que sur sa propre fiche : marquer celle d'un
+            autre ne mènerait nulle part, le drapeau vit sur la recette. */}
+        {recipe.isOwner && (
+          <button
+            type="button"
+            onClick={toggleFavorite}
+            aria-label={recipe.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            aria-pressed={recipe.isFavorite}
+            className={`absolute top-17 left-5 z-3 grid size-10 place-items-center rounded-control border-[1.5px] transition-colors ${
+              recipe.isFavorite
+                ? 'border-ember bg-ember text-ember-ink'
+                : 'border-paper/40 bg-ink/40 text-paper backdrop-blur-sm hover:border-ember hover:bg-ember hover:text-ember-ink'
+            }`}
+          >
+            <IconHeart filled={recipe.isFavorite} />
+          </button>
+        )}
 
         <div className="relative flex min-h-[420px] flex-col justify-end p-6.5 text-paper sm:p-12">
           {kicker && <Label className="text-paper/55">{kicker}</Label>}
@@ -353,27 +372,37 @@ export function RecipePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            icon={<IconEdit />}
-            onClick={() => navigate(`/recipe/${recipe.id}/edit`)}
-            aria-label="Modifier la fiche"
-          />
-          <Button
-            variant="ghost"
-            icon={<IconTrash />}
-            onClick={() => setConfirmDelete(true)}
-            aria-label="Supprimer la fiche"
-          />
-          <Button
-            variant="primary"
-            icon={<IconCart />}
-            loading={addingToList}
-            onClick={addToList}
-            className="max-sm:hidden"
-          >
-            Aux courses
-          </Button>
+          {/* Modifier, supprimer, envoyer aux courses : des gestes sur SON
+              fichier. Sur la fiche d'un autre, il faut d'abord l'enregistrer
+              — c'est ce que propose le bandeau d'attribution. */}
+          {recipe.isOwner && (
+            <>
+              <Button
+                variant="ghost"
+                icon={<IconEdit />}
+                onClick={() => navigate(`/recipe/${recipe.id}/edit`)}
+                aria-label="Modifier la fiche"
+              />
+              <Button
+                variant="ghost"
+                icon={<IconTrash />}
+                onClick={() => setConfirmDelete(true)}
+                aria-label="Supprimer la fiche"
+              />
+              <Button
+                variant="primary"
+                icon={<IconCart />}
+                loading={addingToList}
+                onClick={addToList}
+                className="max-sm:hidden"
+              >
+                Aux courses
+              </Button>
+            </>
+          )}
+          {/* Le mode cuisine reste ouvert à tous : lire une recette en
+              cuisinant ne modifie rien, et c'est précisément l'intérêt de la
+              consulter. */}
           <Button variant="lime" onClick={() => navigate(`/recipe/${recipe.id}/cook`)}>
             Mode cuisine ▶
           </Button>
@@ -396,6 +425,23 @@ export function RecipePage() {
             </div>
           }
         />
+      )}
+
+      {/* ================= Partage ================= */}
+      {recipe.isOwner ? (
+        <div className="mt-5.5">
+          <RecipeSharePanel recipe={recipe} onChange={setRecipe} />
+        </div>
+      ) : (
+        <div className="mt-5.5">
+          <PublicRecipeBanner
+            recipe={recipe}
+            /* La copie remplace la page : l'utilisateur atterrit sur SA
+               fiche, celle qu'il peut modifier, et non sur l'originale qu'il
+               vient de quitter. */
+            onCopied={(copyId) => navigate(`/recipe/${copyId}`, { replace: true })}
+          />
+        </div>
       )}
 
       <WarningPanel className="mt-5" warnings={recipe.warnings} />
@@ -506,15 +552,17 @@ export function RecipePage() {
             </div>
           ))}
 
-          <Button
-            variant="lime"
-            size="lg"
-            loading={addingToList}
-            onClick={addToList}
-            className="mt-6.5 w-full"
-          >
-            Envoyer aux courses →
-          </Button>
+          {recipe.isOwner && (
+            <Button
+              variant="lime"
+              size="lg"
+              loading={addingToList}
+              onClick={addToList}
+              className="mt-6.5 w-full"
+            >
+              Envoyer aux courses →
+            </Button>
+          )}
 
           {recipe.equipment.length > 0 && (
             <div className="mt-6.5 border-t-[1.5px] border-rule-strong pt-4">
@@ -576,20 +624,30 @@ export function RecipePage() {
 
       {/* ================= Le carnet d'essai ================= */}
       {/* Placé après la méthode et avant les conseils : on note et on
-          photographie une fois la recette faite, pas avant de la lire. */}
-      <RatingPanel
-        rating={recipe.rating}
-        ratingNote={recipe.ratingNote}
-        triedAt={recipe.triedAt}
-        onSubmit={rate}
-      />
+          photographie une fois la recette faite, pas avant de la lire.
 
-      <RecipePhoto
-        photoUrl={recipe.userPhotoUrl}
-        title={recipe.title}
-        onUpload={uploadPhoto}
-        onRemove={removePhoto}
-      />
+          Réservé au propriétaire, et sur les deux plans : le serveur ne
+          transmet pas les annotations d'autrui (voir toDto), donc même
+          affiché ici le panneau serait vide — et noter la recette d'un autre
+          reviendrait à écrire dans son carnet. Pour tenir son propre journal
+          d'essai, il faut d'abord enregistrer la fiche chez soi. */}
+      {recipe.isOwner && (
+        <>
+          <RatingPanel
+            rating={recipe.rating}
+            ratingNote={recipe.ratingNote}
+            triedAt={recipe.triedAt}
+            onSubmit={rate}
+          />
+
+          <RecipePhoto
+            photoUrl={recipe.userPhotoUrl}
+            title={recipe.title}
+            onUpload={uploadPhoto}
+            onRemove={removePhoto}
+          />
+        </>
+      )}
 
       {/* ================= Conseils ================= */}
       {recipe.tips.length > 0 && (

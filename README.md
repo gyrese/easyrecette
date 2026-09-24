@@ -17,6 +17,10 @@ npm run dev                          # API sur :4000, interface sur :5173
 
 Ouvre <http://localhost:5173>.
 
+Sans clés Google (voir ci-dessous), la page **Découvrir** est consultable mais
+la connexion est indisponible — et avec elle l'import, la bibliothèque et la
+liste de courses, qui appartiennent à un compte.
+
 ### Clés d'API
 
 L'application démarre sans aucune clé. Dans ce cas :
@@ -37,6 +41,34 @@ Pour activer la génération IA, renseigne **au moins une** de ces clés dans
 
 `AI_PROVIDER` choisit lequel essayer en premier ; les autres servent de repli
 automatique en cas de quota atteint ou de panne.
+
+### Connexion Google
+
+Chaque utilisateur a son propre fichier de recettes, privé par défaut. L'identité
+vient entièrement de Google : aucun mot de passe n'est stocké.
+
+```bash
+# server/.env
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+PUBLIC_SERVER_URL="http://localhost:4000"
+PUBLIC_APP_URL="http://localhost:5173"
+```
+
+Pour obtenir les deux clés : [console.cloud.google.com](https://console.cloud.google.com)
+→ **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+type *Web application*. Dans **Authorized redirect URIs**, coller exactement :
+
+```
+http://localhost:4000/api/auth/google/callback
+```
+
+Tant que l'écran de consentement est en mode « Testing », seuls les comptes
+listés dans **Test users** peuvent se connecter.
+
+`SESSION_SECRET` peut rester vide en développement (un secret éphémère est tiré
+au démarrage, donc les sessions ne survivent pas à un redémarrage). Il est
+**obligatoire en production** — voir [DEPLOY.md](DEPLOY.md).
 
 ### Outils externes (facultatifs)
 
@@ -131,6 +163,35 @@ de page : ce sont eux qui indiquent où porter son attention.
 Changer le nombre de convives recalcule les quantités côté client, avec
 conversion automatique (500 g pour 4 → 1 kg pour 8). Une quantité inconnue
 reste inconnue quel que soit le multiplicateur.
+
+### Comptes et partage
+
+Chaque utilisateur a son fichier, invisible des autres. Une recette peut être
+**partagée fiche par fiche** : elle apparaît alors sur la page Découvrir,
+consultable par tout le monde, y compris sans compte.
+
+Ce que le partage expose et ce qu'il n'expose pas :
+
+| Partagé | Gardé privé |
+| --- | --- |
+| Ingrédients, étapes, matériel, conseils | Ta note et son commentaire d'essai |
+| Durées, portions, catégorie, tags | Ton statut de favori |
+| Provenance (plateforme, auteur d'origine) | Ta photo du plat, ton adresse e-mail |
+| Ton nom d'auteur (ou « Anonyme ») | Tes autres recettes |
+
+Le serveur retire les annotations personnelles au seul endroit qui construit
+les réponses (`toDto`), pas au cas par cas dans chaque endpoint : aucun futur
+endpoint ne peut donc les laisser fuir par oubli.
+
+Un visiteur peut **enregistrer une copie** d'une fiche publique. La copie lui
+appartient — modifiable, notable, et elle survit si l'auteur repasse
+l'originale en privé. C'est un choix assumé : dépublier referme la porte, ça ne
+reprend pas ce qui est déjà sorti. Le panneau de partage le dit explicitement
+plutôt que de laisser croire à un retrait total.
+
+Publier demande de confirmer sous quel nom ; dépublier est immédiat. L'asymétrie
+est voulue : rendre une fiche publique est difficile à rattraper, la refermer ne
+se négocie pas.
 
 ### Liste de courses
 
@@ -271,6 +332,20 @@ Les listes courtes (tags, conseils) sont stockées en JSON texte via
 - **Validation** : toute entrée passe par Zod, y compris la sortie de l'IA.
 - **Secrets** : uniquement côté serveur. Le client appelle `/api` en relatif ;
   aucune clé ni adresse de backend dans le bundle.
+- **Sessions** : le cookie porte un jeton aléatoire de 32 octets ; la base n'en
+  stocke que le SHA-256. Une fuite de la base ne donne donc aucune session
+  utilisable. Cookie `httpOnly`, signé (HMAC), `sameSite=lax`, `secure` en
+  production. Sessions révocables réellement (enregistrement en base plutôt
+  qu'un JWT auto-porté), purgées à l'expiration.
+- **OAuth** : état anti-CSRF dans un cookie signé, comparé en temps constant.
+  Le `id_token` de Google est validé côté serveur — audience, émetteur et
+  adresse vérifiée contrôlés explicitement, jamais décodé en confiance.
+  20 tentatives/min et par IP sur la connexion.
+- **Cloisonnement** : toute requête sur une recette filtre par `userId` dans le
+  `where` SQL. Une fiche privée d'autrui répond **404**, pas 403 : un 403
+  confirmerait son existence à qui essaie des identifiants au hasard. Les
+  routes sont déclarées protégées une par une dans `routes/index.ts`, jamais
+  « ouvertes par défaut sauf exception ».
 
 Limite connue : entre la validation DNS et la connexion TCP, un DNS rebinding
 reste théoriquement possible. Le correctif serait un agent HTTP validant l'IP

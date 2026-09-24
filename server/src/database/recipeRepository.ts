@@ -1,11 +1,13 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './client.js';
 import {
+  type DiscoverQuery,
   type GeneratedRecipe,
   type RateRecipeInput,
   type RecipeQuery,
   type SaveRecipeInput,
   type UpdateRecipeInput,
+  type VisibilityInput,
 } from '../schemas/recipe.js';
 import { parseList, serializeList } from '../utils/json.js';
 import { ingredientSlug, normalizeUnit } from '../utils/units.js';
@@ -15,6 +17,7 @@ import {
   deleteUserPhoto,
   saveUserPhoto,
 } from '../services/media/storage.js';
+import { publicAuthorName } from '../services/auth/accounts.js';
 
 /**
  * Accès aux recettes.
@@ -33,9 +36,21 @@ const recipeInclude = {
   },
   steps: { orderBy: { order: 'asc' } },
   tags: { include: { tag: true } },
+  /*
+   * L'auteur est chargé avec la recette pour pouvoir l'afficher sur la page
+   * Découvrir. Seuls le nom d'affichage et l'identifiant sortent du serveur :
+   * l'adresse e-mail n'est jamais exposée, y compris sur une fiche publique.
+   */
+  user: { select: { id: true, name: true, displayName: true, avatarUrl: true } },
 } satisfies Prisma.RecipeInclude;
 
 type RecipeWithRelations = Prisma.RecipeGetPayload<{ include: typeof recipeInclude }>;
+
+export interface RecipeAuthor {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+}
 
 export interface RecipeDto extends GeneratedRecipe {
   id: string;
@@ -52,9 +67,37 @@ export interface RecipeDto extends GeneratedRecipe {
   createdAt: string;
   updatedAt: string;
   importedAt: string | null;
+
+  /// Partagée avec tout le monde. Voir setVisibility().
+  isPublic: boolean;
+  publishedAt: string | null;
+  /// Nombre de fois que la fiche a été copiée par d'autres utilisateurs.
+  copyCount: number;
+  /// Auteur, pour l'attribution sur la page Découvrir.
+  author: RecipeAuthor;
+  /// Renseigné quand la fiche est une copie d'une recette publique.
+  copiedFromId: string | null;
+  /**
+   * true quand la fiche est consultée par quelqu'un d'autre que son auteur.
+   * Le client s'en sert pour masquer les gestes qui ne le concernent pas
+   * (éditer, noter, supprimer) plutôt que de les afficher puis échouer en 403.
+   */
+  isOwner: boolean;
 }
 
-export function toDto(recipe: RecipeWithRelations): RecipeDto {
+/**
+ * Traduction vers le DTO de l'API.
+ *
+ * `viewerId` décide de deux choses : le drapeau `isOwner`, et l'effacement
+ * des champs personnels. Une recette publique consultée par un tiers ne doit
+ * pas révéler la note que son auteur lui a donnée, son commentaire d'essai ni
+ * son statut de favori : ce sont des annotations privées, pas du contenu
+ * partagé. Les omettre ici — au seul endroit qui construit les réponses —
+ * garantit qu'aucun futur endpoint ne pourra les laisser fuir par oubli.
+ */
+export function toDto(recipe: RecipeWithRelations, viewerId: string | null = null): RecipeDto {
+  const isOwner = viewerId !== null && recipe.userId === viewerId;
+
   return {
     id: recipe.id,
     title: recipe.title,
@@ -102,14 +145,26 @@ export function toDto(recipe: RecipeWithRelations): RecipeDto {
     confidence: recipe.confidence ?? 1,
     warnings: parseList(recipe.warnings),
 
-    isFavorite: recipe.isFavorite,
-    rating: recipe.rating,
-    ratingNote: recipe.ratingNote,
-    triedAt: recipe.triedAt?.toISOString() ?? null,
+    // Annotations privées : neutralisées pour un visiteur tiers.
+    isFavorite: isOwner ? recipe.isFavorite : false,
+    rating: isOwner ? recipe.rating : null,
+    ratingNote: isOwner ? recipe.ratingNote : null,
+    triedAt: isOwner ? (recipe.triedAt?.toISOString() ?? null) : null,
 
     createdAt: recipe.createdAt.toISOString(),
     updatedAt: recipe.updatedAt.toISOString(),
     importedAt: recipe.importedAt?.toISOString() ?? null,
+
+    isPublic: recipe.isPublic,
+    publishedAt: recipe.publishedAt?.toISOString() ?? null,
+    copyCount: recipe.copyCount,
+    author: {
+      id: recipe.user.id,
+      name: publicAuthorName(recipe.user),
+      avatarUrl: recipe.user.avatarUrl,
+    },
+    copiedFromId: recipe.copiedFromId,
+    isOwner,
   };
 }
 
@@ -243,14 +298,14 @@ export async function createRecipe(
           },
           include: recipeInclude,
         });
-        return toDto(withMedia);
+        return toDto(withMedia, userId);
       }
     } catch (error) {
       console.warn('[media] rattachement de la vidéo impossible :', error);
     }
   }
 
-  return toDto(recipe);
+  return toDto(recipe, userId);
 }
 
 export async function updateRecipe(
@@ -330,7 +385,7 @@ export async function updateRecipe(
     return tx.recipe.findUniqueOrThrow({ where: { id: recipeId }, include: recipeInclude });
   });
 
-  return toDto(recipe);
+  return toDto(recipe, userId);
 }
 
 export async function getRecipe(userId: string, recipeId: string): Promise<RecipeDto | null> {
@@ -338,7 +393,7 @@ export async function getRecipe(userId: string, recipeId: string): Promise<Recip
     where: { id: recipeId, userId },
     include: recipeInclude,
   });
-  return recipe ? toDto(recipe) : null;
+  return recipe ? toDto(recipe, userId) : null;
 }
 
 export async function deleteRecipe(userId: string, recipeId: string): Promise<boolean> {
@@ -425,7 +480,7 @@ export async function listRecipes(
     prisma.recipe.count({ where }),
   ]);
 
-  return { recipes: recipes.map(toDto), total };
+  return { recipes: recipes.map((recipe) => toDto(recipe, userId)), total };
 }
 
 /** Valeurs distinctes présentes en base, pour alimenter les filtres de l'UI. */
@@ -441,9 +496,19 @@ export async function getFilterFacets(userId: string) {
       where: { userId, cuisine: { not: null } },
       _count: { _all: true },
     }),
+    /*
+     * Le compteur est filtré, pas seulement la liste.
+     *
+     * `_count: { recipes: true }` sans filtre compterait TOUTES les liaisons
+     * du tag, toutes recettes confondues : l'utilisateur lirait « pâtes · 47 »
+     * en n'en ayant que trois, ce qui révélerait l'activité des autres
+     * comptes. Le filtre doit donc être répété dans le `_count`.
+     */
     prisma.tag.findMany({
       where: { recipes: { some: { recipe: { userId } } } },
-      include: { _count: { select: { recipes: true } } },
+      include: {
+        _count: { select: { recipes: { where: { recipe: { userId } } } } },
+      },
       orderBy: { name: 'asc' },
       take: 40,
     }),
@@ -493,7 +558,7 @@ export async function rateRecipe(
     include: recipeInclude,
   });
 
-  return toDto(updated);
+  return toDto(updated, userId);
 }
 
 /**
@@ -520,7 +585,7 @@ export async function setUserPhoto(
     include: recipeInclude,
   });
 
-  return toDto(updated);
+  return toDto(updated, userId);
 }
 
 /**
@@ -546,7 +611,7 @@ export async function removeUserPhoto(
 
   await deleteUserPhoto(recipeId).catch(() => undefined);
 
-  return toDto(updated);
+  return toDto(updated, userId);
 }
 
 export async function toggleFavorite(
@@ -574,5 +639,267 @@ export async function toggleFavorite(
     await prisma.favorite.deleteMany({ where: { userId, recipeId } });
   }
 
-  return toDto(updated);
+  return toDto(updated, userId);
+}
+
+// ---------------------------------------------------------------------------
+// Partage public
+// ---------------------------------------------------------------------------
+
+/**
+ * Publie une recette, ou la repasse en privé.
+ *
+ * `publishedAt` est posé à la première publication et n'est plus jamais
+ * touché : dépublier puis republier ne fait pas remonter la fiche en tête de
+ * la page Découvrir, ce qui serait un levier facile pour se maintenir en
+ * vitrine. C'est la même logique que `triedAt` pour la notation — une date
+ * d'événement ne se réécrit pas.
+ *
+ * Retirer une recette du public ne touche PAS aux copies déjà faites : elles
+ * appartiennent à ceux qui les ont enregistrées. Dépublier ferme la porte, ça
+ * ne reprend pas ce qui est déjà sorti.
+ */
+export async function setVisibility(
+  userId: string,
+  recipeId: string,
+  input: VisibilityInput,
+): Promise<RecipeDto | null> {
+  const existing = await prisma.recipe.findFirst({
+    where: { id: recipeId, userId },
+    select: { id: true, publishedAt: true },
+  });
+  if (!existing) return null;
+
+  if (input.displayName !== undefined) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { displayName: input.displayName?.trim() || null },
+    });
+  }
+
+  const updated = await prisma.recipe.update({
+    where: { id: recipeId },
+    data: {
+      isPublic: input.isPublic,
+      ...(input.isPublic && !existing.publishedAt ? { publishedAt: new Date() } : {}),
+    },
+    include: recipeInclude,
+  });
+
+  return toDto(updated, userId);
+}
+
+/**
+ * Lit une recette accessible au visiteur : la sienne, ou n'importe quelle
+ * fiche publique.
+ *
+ * Une seule requête plutôt qu'un `getRecipe` suivi d'un repli sur le public :
+ * la condition est dans le `where`, donc il n'existe aucun chemin de code où
+ * une recette privée d'autrui serait chargée puis filtrée après coup.
+ */
+export async function getVisibleRecipe(
+  viewerId: string | null,
+  recipeId: string,
+): Promise<RecipeDto | null> {
+  const recipe = await prisma.recipe.findFirst({
+    where: {
+      id: recipeId,
+      OR: [{ isPublic: true }, ...(viewerId ? [{ userId: viewerId }] : [])],
+    },
+    include: recipeInclude,
+  });
+
+  return recipe ? toDto(recipe, viewerId) : null;
+}
+
+/** Page Découvrir : toutes les recettes publiques, quel qu'en soit l'auteur. */
+export async function listPublicRecipes(
+  viewerId: string | null,
+  query: DiscoverQuery,
+): Promise<RecipeListResult> {
+  const where: Prisma.RecipeWhereInput = { isPublic: true };
+
+  if (query.category) where.category = query.category;
+  if (query.difficulty) where.difficulty = query.difficulty;
+  if (query.cuisine) where.cuisine = query.cuisine;
+  if (query.maxTime) where.totalTime = { lte: query.maxTime, not: null };
+  if (query.tag) where.tags = { some: { tag: { slug: ingredientSlug(query.tag) } } };
+
+  if (query.q) {
+    where.OR = [
+      { title: { contains: query.q } },
+      { description: { contains: query.q } },
+      { cuisine: { contains: query.q } },
+      { ingredients: { some: { label: { contains: query.q } } } },
+      { tags: { some: { tag: { name: { contains: query.q } } } } },
+    ];
+  }
+
+  const orderBy: Prisma.RecipeOrderByWithRelationInput[] = (() => {
+    switch (query.sort) {
+      case 'title':
+        return [{ title: 'asc' }];
+      case 'time':
+        return [{ totalTime: 'asc' }, { publishedAt: 'desc' }];
+      case 'popular':
+        return [{ copyCount: 'desc' }, { publishedAt: 'desc' }];
+      default:
+        // Tri sur la date de publication, pas de création : une recette
+        // importée l'an dernier et partagée aujourd'hui est une nouveauté
+        // pour ceux qui la découvrent.
+        return [{ publishedAt: 'desc' }];
+    }
+  })();
+
+  const [recipes, total] = await Promise.all([
+    prisma.recipe.findMany({
+      where,
+      include: recipeInclude,
+      orderBy,
+      take: query.take,
+      skip: query.skip,
+    }),
+    prisma.recipe.count({ where }),
+  ]);
+
+  return { recipes: recipes.map((recipe) => toDto(recipe, viewerId)), total };
+}
+
+/** Facettes calculées sur le seul périmètre public. */
+export async function getPublicFacets() {
+  const [categories, cuisines, tags] = await Promise.all([
+    prisma.recipe.groupBy({
+      by: ['category'],
+      where: { isPublic: true, category: { not: null } },
+      _count: { _all: true },
+    }),
+    prisma.recipe.groupBy({
+      by: ['cuisine'],
+      where: { isPublic: true, cuisine: { not: null } },
+      _count: { _all: true },
+    }),
+    // Même filtre dans le `_count` que dans le `where` : sinon le décompte
+    // inclurait les recettes privées portant ce tag.
+    prisma.tag.findMany({
+      where: { recipes: { some: { recipe: { isPublic: true } } } },
+      include: {
+        _count: { select: { recipes: { where: { recipe: { isPublic: true } } } } },
+      },
+      orderBy: { name: 'asc' },
+      take: 40,
+    }),
+  ]);
+
+  return {
+    categories: categories
+      .filter((row) => row.category)
+      .map((row) => ({ value: row.category as string, count: row._count._all })),
+    cuisines: cuisines
+      .filter((row) => row.cuisine)
+      .map((row) => ({ value: row.cuisine as string, count: row._count._all })),
+    tags: tags.map((tag) => ({ value: tag.name, slug: tag.slug, count: tag._count.recipes })),
+  };
+}
+
+/**
+ * Copie une recette publique dans le fichier du visiteur.
+ *
+ * Ce qui est copié : le contenu culinaire (ingrédients, étapes, matériel,
+ * conseils, tags) et la provenance d'origine. Ce qui ne l'est pas :
+ *  - la note, le commentaire d'essai et le favori — ce sont les annotations
+ *    de l'auteur, pas des faits sur la recette ;
+ *  - la visibilité — une copie arrive privée, à son nouveau propriétaire de
+ *    décider s'il la repartage ;
+ *  - la vidéo et la photo du plat — ce sont des fichiers sur le disque, qui
+ *    se retrouveraient partagés entre deux fiches indépendantes, et que la
+ *    suppression de l'une effacerait pour l'autre. La copie garde `imageUrl`,
+ *    qui est une adresse distante, pas un fichier local.
+ *
+ * `copiedFromId` conserve le lien vers l'originale : c'est ce qui permet
+ * d'afficher « d'après la recette de X » et de compter les copies.
+ */
+export async function copyPublicRecipe(
+  userId: string,
+  recipeId: string,
+): Promise<RecipeDto | null> {
+  const source = await prisma.recipe.findFirst({
+    where: { id: recipeId, isPublic: true },
+    include: recipeInclude,
+  });
+
+  if (!source) return null;
+
+  // Sa propre recette : rien à copier, on renvoie l'originale telle quelle
+  // plutôt que de créer un doublon silencieux dans son propre fichier.
+  if (source.userId === userId) return toDto(source, userId);
+
+  const created = await prisma.$transaction(async (tx) => {
+    const copy = await tx.recipe.create({
+      data: {
+        userId,
+        title: source.title,
+        description: source.description,
+        imageUrl: source.imageUrl,
+        servings: source.servings,
+        prepTime: source.prepTime,
+        cookingTime: source.cookingTime,
+        totalTime: source.totalTime,
+        difficulty: source.difficulty,
+        category: source.category,
+        cuisine: source.cuisine,
+        equipment: source.equipment,
+        tips: source.tips,
+        confidence: source.confidence,
+        warnings: source.warnings,
+        sourceUrl: source.sourceUrl,
+        sourcePlatform: source.sourcePlatform,
+        sourceAuthor: source.sourceAuthor,
+        sourceTitle: source.sourceTitle,
+        importedAt: source.importedAt,
+        copiedFromId: source.id,
+        steps: {
+          create: source.steps.map((step) => ({
+            order: step.order,
+            title: step.title,
+            instruction: step.instruction,
+            duration: step.duration,
+            temperature: step.temperature,
+          })),
+        },
+      },
+    });
+
+    for (const [index, item] of source.ingredients.entries()) {
+      await tx.recipeIngredient.create({
+        data: {
+          recipeId: copy.id,
+          // L'Ingredient canonique est partagé : c'est précisément ce qui
+          // permettra de fusionner les courses des deux fiches.
+          ingredientId: item.ingredientId,
+          quantity: item.quantity,
+          unit: item.unit,
+          label: item.label,
+          preparation: item.preparation,
+          note: item.note,
+          section: item.section,
+          position: index,
+        },
+      });
+    }
+
+    for (const link of source.tags) {
+      await tx.recipeTag.create({ data: { recipeId: copy.id, tagId: link.tagId } });
+    }
+
+    // Compteur incrémenté dans la transaction : il ne peut pas monter sans
+    // qu'une copie existe réellement.
+    await tx.recipe.update({
+      where: { id: source.id },
+      data: { copyCount: { increment: 1 } },
+    });
+
+    return tx.recipe.findUniqueOrThrow({ where: { id: copy.id }, include: recipeInclude });
+  });
+
+  return toDto(created, userId);
 }
