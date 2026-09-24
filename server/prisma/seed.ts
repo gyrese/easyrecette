@@ -2,12 +2,17 @@ import { PrismaClient } from '@prisma/client';
 import { ingredientSlug } from '../src/utils/units.js';
 
 /**
- * Seed : crée l'utilisateur local et deux recettes de démonstration.
+ * Seed : crée le compte de démarrage et deux recettes de démonstration.
  *
  * Les recettes servent à avoir une bibliothèque non vide au premier lancement,
  * et à vérifier l'affichage (sections d'ingrédients, étapes minutées,
  * quantité manquante, provenance). Elles sont marquées comme saisies
  * manuellement, pas importées.
+ *
+ * Le compte créé ici n'a pas de `googleId` : c'est justement ce qui permet au
+ * premier utilisateur qui se connecte d'en hériter, recettes comprises (voir
+ * src/services/auth/accounts.ts). Les recettes arrivent privées — le partage
+ * public est toujours un geste explicite de leur propriétaire.
  */
 
 const prisma = new PrismaClient();
@@ -175,7 +180,7 @@ async function main(): Promise<void> {
     create: { email: LOCAL_USER_EMAIL, name: 'Moi' },
   });
 
-  console.log(`Utilisateur local : ${user.email}`);
+  console.log(`Compte de démarrage : ${user.email} (repris à la première connexion Google)`);
 
   for (const seed of RECIPES) {
     const existing = await prisma.recipe.findFirst({

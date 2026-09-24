@@ -20,29 +20,13 @@ export const prisma =
 if (!config.isProd) globalForPrisma.prisma = prisma;
 
 /**
- * Identifiant du compte utilisé par l'application.
+ * Adresse du compte technique du MVP mono-utilisateur.
  *
- * Le MVP est mono-utilisateur (choix assumé) : le modèle User existe en base
- * et toutes les requêtes sont déjà scopées par userId, mais il n'y a pas
- * d'authentification. Ajouter un vrai login ne demandera que de remplacer
- * cette fonction par une lecture de session.
+ * Il n'est plus créé (voir prisma/seed.ts) mais la constante reste : c'est
+ * elle qui permet au premier utilisateur qui se connecte d'hériter des
+ * recettes d'avant l'authentification (voir services/auth/accounts.ts).
  */
-const LOCAL_USER_EMAIL = 'local@cookbook.app';
-
-let cachedUserId: string | null = null;
-
-export async function getCurrentUserId(): Promise<string> {
-  if (cachedUserId) return cachedUserId;
-
-  const user = await prisma.user.upsert({
-    where: { email: LOCAL_USER_EMAIL },
-    update: {},
-    create: { email: LOCAL_USER_EMAIL, name: 'Moi' },
-  });
-
-  cachedUserId = user.id;
-  return user.id;
-}
+export const LEGACY_USER_EMAIL = 'local@cookbook.app';
 
 export async function disconnect(): Promise<void> {
   await prisma.$disconnect();

@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { getCurrentUserId } from '../database/client.js';
+import { currentUserId } from '../middleware/auth.js';
 import { createImportSchema, manualImportSchema } from '../schemas/import.js';
 import { PLATFORM_LABELS } from '../schemas/recipe.js';
 import { cleanUrl, detectPlatform } from '../services/importers/index.js';
@@ -50,7 +50,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     throw appError('INVALID_URL', { message: 'Aucune URL fournie.' });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const result = await runImport(userId, parsed.data.url);
 
   res.status(200).json(result);
@@ -66,7 +66,7 @@ export async function manual(req: Request, res: Response): Promise<void> {
     });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const existingId = typeof req.body?.importId === 'string' ? req.body.importId : undefined;
   const result = await runManualImport(userId, parsed.data, existingId);
 
@@ -74,7 +74,7 @@ export async function manual(req: Request, res: Response): Promise<void> {
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const record = await getImport(userId, req.params['id'] ?? '');
 
   if (!record) {

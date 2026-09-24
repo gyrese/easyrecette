@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { getCurrentUserId } from '../database/client.js';
+import { currentUserId } from '../middleware/auth.js';
 import * as service from '../services/shoppingList.js';
 import { appError } from '../utils/errors.js';
 
@@ -15,8 +15,8 @@ const addItemSchema = z.object({
   unit: z.string().trim().max(32).nullable().default(null),
 });
 
-export async function get(_req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+export async function get(req: Request, res: Response): Promise<void> {
+  const userId = currentUserId(req);
   res.json(await service.getList(userId));
 }
 
@@ -26,7 +26,7 @@ export async function addRecipes(req: Request, res: Response): Promise<void> {
     throw appError('INVALID_INPUT', { message: 'Aucune recette sélectionnée.', status: 422 });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   res.json(await service.addRecipes(userId, parsed.data));
 }
 
@@ -36,13 +36,13 @@ export async function addItem(req: Request, res: Response): Promise<void> {
     throw appError('INVALID_INPUT', { message: 'Article invalide.', status: 422 });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const { label, quantity, unit } = parsed.data;
   res.json(await service.addManualItem(userId, label, quantity, unit));
 }
 
 export async function toggleItem(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const result = await service.toggleItem(userId, req.params['itemId'] ?? '');
 
   if (!result) {
@@ -53,17 +53,17 @@ export async function toggleItem(req: Request, res: Response): Promise<void> {
 }
 
 export async function removeItem(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   res.json(await service.removeItem(userId, req.params['itemId'] ?? ''));
 }
 
 export async function removeRecipe(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   res.json(await service.removeRecipe(userId, req.params['recipeId'] ?? ''));
 }
 
 export async function clear(req: Request, res: Response): Promise<void> {
-  const userId = await getCurrentUserId();
+  const userId = currentUserId(req);
   const onlyChecked = req.query['checked'] === '1' || req.query['checked'] === 'true';
   res.json(await service.clearList(userId, { onlyChecked }));
 }

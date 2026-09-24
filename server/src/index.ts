@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -6,6 +7,7 @@ import { config } from './config.js';
 import { disconnect, prisma } from './database/client.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { router } from './routes/index.js';
+import { cleanExpiredSessions } from './services/auth/session.js';
 import { cleanTempMedia, MEDIA_ROOT } from './services/media/storage.js';
 import { isAiConfigured } from './services/recipeAI/index.js';
 
@@ -31,6 +33,15 @@ app.use(
 
 // Plafond volontairement bas : les payloads sont des recettes, pas des fichiers.
 app.use(express.json({ limit: '1mb' }));
+
+/*
+ * Cookies signés : le cookie de session et l'état OAuth.
+ *
+ * La signature n'apporte pas la confidentialité (le jeton reste lisible dans
+ * le navigateur, c'est le principe) mais l'intégrité : un cookie bricolé à la
+ * main est rejeté avant même d'atteindre la base.
+ */
+app.use(cookieParser(config.auth.sessionSecret));
 
 if (!config.isProd) {
   app.use(morgan('dev'));
@@ -78,12 +89,24 @@ async function start(): Promise<void> {
   // Les imports interrompus laissent des vidéos temporaires derrière eux.
   await cleanTempMedia();
 
+  // Les sessions périmées aussi : la base se nettoie au démarrage plutôt que
+  // par une tâche planifiée à surveiller.
+  const purged = await cleanExpiredSessions();
+  if (purged > 0) console.log(`  ${purged} session(s) expirée(s) purgée(s)`);
+
   const server = app.listen(config.port, () => {
     console.log(`\n  CookBook API  →  http://localhost:${config.port}/api`);
     console.log(`  Environnement : ${config.env}`);
     console.log(
       `  IA            : ${
         isAiConfigured() ? config.ai.order.join(', ') : 'non configurée (import automatique indisponible)'
+      }`,
+    );
+    console.log(
+      `  Connexion     : ${
+        config.auth.googleConfigured
+          ? `Google (retour sur ${config.auth.google.redirectUri})`
+          : 'non configurée — renseigne GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET'
       }\n`,
     );
   });

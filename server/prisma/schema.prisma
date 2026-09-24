@@ -21,20 +21,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Mono-utilisateur pour le MVP : un seul User "local" créé au seed.
-/// Le modèle existe dès maintenant pour que l'ajout d'une vraie auth
-/// n'impose pas de migration destructrice plus tard.
+/// Compte utilisateur, créé à la première connexion Google.
+///
+/// Il n'y a pas de mot de passe en base : l'identité vient entièrement de
+/// Google (voir src/services/auth/google.ts). `email` reste la clé unique
+/// plutôt que `googleId` pour que le compte « local » du MVP puisse être
+/// repris tel quel par son propriétaire à sa première connexion.
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Photo de profil Google, affichée dans l'en-tête. Peut disparaître si
+  /// l'utilisateur la retire chez Google : jamais considérée comme acquise.
+  avatarUrl String?
+
+  /// `sub` du jeton Google — identifiant stable, contrairement à l'email qui
+  /// peut changer. Null sur les comptes antérieurs à l'authentification.
+  googleId String? @unique
+
+  /// Nom affiché à côté d'une recette publique. Distinct de `name` : on peut
+  /// vouloir publier sous un pseudo sans renommer son propre compte.
+  /// Null = on affiche `name`, ou « Anonyme » en dernier recours.
+  displayName String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
 
   recipes       Recipe[]
   favorites     Favorite[]
   shoppingLists ShoppingList[]
   imports       Import[]
+  sessions      Session[]
+}
+
+/// Session serveur, référencée par un cookie httpOnly.
+///
+/// Un enregistrement en base plutôt qu'un JWT auto-porté : c'est ce qui
+/// permet de déconnecter réellement (ici ou partout), et de ne pas laisser un
+/// jeton volé valide jusqu'à son expiration.
+///
+/// `id` n'est jamais envoyé au client : le cookie porte un secret aléatoire
+/// dont seul le hash SHA-256 est stocké (`tokenHash`). Une fuite de la base
+/// ne donne donc pas de session utilisable.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  /// Contexte de création, pour que l'utilisateur reconnaisse ses sessions.
+  userAgent String?
+  ip        String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Recipe {
@@ -85,6 +129,29 @@ model Recipe {
 
   isFavorite Boolean @default(false)
 
+  /// Recette visible par tout le monde, connecté ou non.
+  ///
+  /// Le partage est un geste explicite, réversible, et par défaut désactivé :
+  /// une recette importée depuis un compte privé ne doit jamais se retrouver
+  /// publiée par accident.
+  isPublic Boolean @default(false)
+
+  /// Date de la première publication. Sert de tri sur la page Découvrir et
+  /// n'est pas remise à zéro par un repassage en privé puis en public :
+  /// la recette garde son ancienneté dans la découverte.
+  publishedAt DateTime?
+
+  /// Nombre de copies faites par d'autres utilisateurs. Sert de signal de
+  /// popularité ; incrémenté seulement par un enregistrement réussi.
+  copyCount Int @default(0)
+
+  /// Recette d'origine quand celle-ci a été copiée depuis une fiche publique.
+  /// `SetNull` : la copie survit à la suppression de l'originale, elle
+  /// appartient désormais à son nouveau propriétaire.
+  copiedFromId String?
+  copiedFrom   Recipe?  @relation("RecipeCopies", fields: [copiedFromId], references: [id], onDelete: SetNull)
+  copies       Recipe[] @relation("RecipeCopies")
+
   /// Note personnelle attribuée APRÈS avoir essayé la recette, 1..5.
   /// null = pas encore essayée. C'est cette distinction que porte le badge
   /// « Essayée » du fichier : on ne note pas ce qu'on n'a pas cuisiné.
@@ -119,6 +186,8 @@ model Recipe {
   @@index([userId, createdAt])
   @@index([userId, category])
   @@index([userId, rating])
+  /// Alimente la page Découvrir sans balayer les recettes privées.
+  @@index([isPublic, publishedAt])
 }
 
 /// Ingrédient canonique, dédupliqué par nom normalisé.
