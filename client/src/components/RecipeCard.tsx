@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   categoryLabel,
@@ -8,7 +9,7 @@ import {
 } from '../lib/format';
 import type { Recipe } from '../lib/types';
 import { PLATFORM_LABELS, RATING_LABELS } from '../lib/types';
-import { IconCheck, IconHeart } from './Icons';
+import { IconCheck, IconClose, IconHeart, IconTrash } from './Icons';
 import { Stars } from './RecipeRating';
 import { RecipeImage } from './ui';
 
@@ -22,6 +23,12 @@ import { RecipeImage } from './ui';
  *
  * L'état de sélection sert à la liste de courses : on peut cocher plusieurs
  * recettes depuis la bibliothèque puis les envoyer d'un coup.
+ *
+ * La suppression demande une confirmation sur la carte elle-même plutôt que
+ * dans une boîte de dialogue : le geste est définitif, et la grille est
+ * précisément l'endroit où l'on clique vite. Le voile qui la porte couvre
+ * toute la carte, ce qui rend impossible d'effacer une recette en visant mal
+ * la vignette voisine.
  */
 
 interface Props {
@@ -30,6 +37,8 @@ interface Props {
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
+  /** Absent = pas de poubelle : c'est le cas sur l'accueil (§lecture seule). */
+  onDelete?: (id: string) => void;
   index?: number;
 }
 
@@ -39,9 +48,15 @@ export function RecipeCard({
   selected = false,
   onToggleSelect,
   onToggleFavorite,
+  onDelete,
   index = 0,
 }: Props) {
   const source = recipe.source.platform !== 'manual' ? recipe.source : null;
+
+  /* La confirmation vit dans la carte et non dans la page : deux cartes ne
+     peuvent pas demander confirmation en même temps, et quitter la grille
+     (filtre, recherche) démonte le composant et annule la demande. */
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <article
@@ -112,8 +127,12 @@ export function RecipeCard({
         </div>
       </Link>
 
-      {/* --- Contrôles superposés --- */}
-      <div className="absolute top-2.5 left-2.5 z-10 flex gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 has-[[aria-pressed=true]]:opacity-100">
+      {/* --- Contrôles superposés ---
+          `focus-within` en plus du survol : sans lui, la poubelle et le cœur
+          resteraient invisibles à la tabulation. Un bouton qu'on peut activer
+          sans le voir est un bouton qu'on active par accident — a fortiori
+          celui qui supprime. */}
+      <div className="absolute top-2.5 left-2.5 z-10 flex gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-pressed=true]]:opacity-100">
         {onToggleFavorite && (
           <button
             type="button"
@@ -157,7 +176,61 @@ export function RecipeCard({
             <IconCheck />
           </button>
         )}
+
+        {/* La poubelle ferme la barre, séparée du reste : c'est la seule
+            action irréversible de la carte, elle ne doit pas se trouver sous
+            le doigt qui visait le cœur. Elle ne vire au rouge qu'au survol,
+            pour ne pas crier dans une grille de cinquante vignettes. */}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              setConfirming(true);
+            }}
+            aria-label={`Supprimer ${recipe.title}`}
+            className="ml-0.5 grid size-9 place-items-center rounded-full bg-paper/90 text-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-danger hover:text-paper"
+          >
+            <IconTrash />
+          </button>
+        )}
       </div>
+
+      {/* --- Confirmation de suppression --- */}
+      {confirming && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-paper/95 px-4 text-center backdrop-blur-sm">
+          <p className="font-display text-xl leading-tight text-ink">Supprimer&nbsp;?</p>
+          <p className="clamp-2 text-[13px] leading-snug text-ink-soft">{recipe.title}</p>
+          <p className="label-mono-sm text-ink-faint">Cette action est définitive</p>
+
+          <div className="mt-1 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                onDelete?.(recipe.id);
+              }}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-danger px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-paper transition-opacity hover:opacity-85"
+            >
+              <IconTrash />
+              Supprimer
+            </button>
+
+            <button
+              type="button"
+              /* `autoFocus` : la touche Échap n'existe pas au doigt, et
+                 l'annulation doit être ce qu'on atteint en premier au
+                 clavier — jamais la suppression. */
+              autoFocus
+              onClick={() => setConfirming(false)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-rule-strong px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-ink transition-colors hover:bg-paper-sunk"
+            >
+              <IconClose />
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

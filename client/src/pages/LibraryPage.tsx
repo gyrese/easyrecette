@@ -164,6 +164,44 @@ export function LibraryPage() {
     }
   }
 
+  /**
+   * Suppression depuis la grille.
+   *
+   * La carte disparaît tout de suite et le décompte suit : attendre la
+   * réponse du serveur laisserait une vignette morte sous le doigt. En cas
+   * d'échec, la recette est remise à sa place exacte plutôt qu'en fin de
+   * liste — sinon une suppression ratée réordonnerait la grille sans raison
+   * visible.
+   */
+  async function deleteRecipe(id: string) {
+    const index = recipes.findIndex((recipe) => recipe.id === id);
+    if (index === -1) return;
+    const removed = recipes[index]!;
+
+    setRecipes((previous) => previous.filter((recipe) => recipe.id !== id));
+    setTotal((previous) => Math.max(0, previous - 1));
+
+    // Une recette effacée n'a plus à peser sur la liste de courses en attente.
+    setSelection((previous) => {
+      if (!previous.has(id)) return previous;
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
+
+    try {
+      await api.deleteRecipe(id);
+    } catch (err) {
+      setRecipes((previous) => {
+        const next = [...previous];
+        next.splice(index, 0, removed);
+        return next;
+      });
+      setTotal((previous) => previous + 1);
+      setError(err instanceof ApiError ? err.message : 'La suppression a échoué.');
+    }
+  }
+
   function toggleSelect(id: string) {
     setSelection((previous) => {
       const next = new Set(previous);
@@ -417,6 +455,7 @@ export function LibraryPage() {
               selected={selection.has(recipe.id)}
               onToggleSelect={toggleSelect}
               onToggleFavorite={toggleFavorite}
+              onDelete={deleteRecipe}
             />
           ))}
         </div>
