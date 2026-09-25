@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconGlobe, IconLogout, IconTrash } from '../components/Icons';
+import { IconGlobe, IconLock, IconLogout, IconTrash } from '../components/Icons';
 import { Button, ErrorPanel, FadeIn, Input, Label, SectionHead } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -19,7 +19,7 @@ import { useAuth } from '../lib/auth';
  */
 export function AccountPage() {
   const navigate = useNavigate();
-  const { user, authorName, setDisplayName, logout } = useAuth();
+  const { user, authorName, setDisplayName, logout, changePassword } = useAuth();
 
   const [name, setName] = useState(user?.displayName ?? '');
   const [savingName, setSavingName] = useState(false);
@@ -31,6 +31,12 @@ export function AccountPage() {
 
   const [confirmText, setConfirmText] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   // La garde de route ne rend cette page qu'à un utilisateur connecté ; ce
   // garde-fou couvre l'instant entre une déconnexion et la redirection.
@@ -47,6 +53,25 @@ export function AccountPage() {
       setError(err instanceof ApiError ? err.message : "Le nom n'a pas pu être enregistré.");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function savePassword() {
+    if (!user) return;
+    setSavingPassword(true);
+    setPasswordError(null);
+    setPasswordSaved(false);
+    try {
+      await changePassword(user.hasPassword ? currentPassword : null, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordSaved(true);
+    } catch (err) {
+      setPasswordError(
+        err instanceof ApiError ? err.message : "Le mot de passe n'a pas pu être changé.",
+      );
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -111,8 +136,9 @@ export function AccountPage() {
         </div>
 
         <p className="mt-5 border-t-[1.5px] border-rule pt-4 text-[13px] leading-[1.6] text-ink-faint">
-          Ton nom, ta photo et ton adresse viennent de Google et se mettent à jour à chaque
-          connexion. Pour les changer, modifie-les dans ton compte Google.
+          {user.hasGoogle
+            ? 'Ton nom, ta photo et ton adresse viennent de Google et se mettent à jour à chaque connexion. Pour les changer, modifie-les dans ton compte Google.'
+            : "Ton adresse sert d'identifiant de connexion. Elle n'est jamais affichée aux autres utilisateurs."}
         </p>
       </section>
 
@@ -124,7 +150,7 @@ export function AccountPage() {
         </Label>
         <p className="mt-2.5 text-[14px] leading-[1.58] text-ink-soft">
           Le nom qui signe les recettes que tu rends publiques. Il peut différer de ton nom
-          Google — un pseudo fait très bien l'affaire.
+          de compte — un pseudo fait très bien l'affaire.
         </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-2.5">
@@ -152,6 +178,69 @@ export function AccountPage() {
           Laissé vide, tes recettes publiques sont signées «&nbsp;
           {user.name?.trim() || 'Anonyme'}&nbsp;». Ton adresse e-mail n'est jamais affichée.
         </p>
+      </section>
+
+      {/* ---------------- Mot de passe ---------------- */}
+      <section className="surface mt-6 p-6">
+        <Label as="h2" className="flex items-center gap-2 text-ink">
+          <IconLock className="text-sm" />
+          {user.hasPassword ? 'Mot de passe' : 'Ajouter un mot de passe'}
+        </Label>
+        <p className="mt-2.5 text-[14px] leading-[1.58] text-ink-soft">
+          {user.hasPassword
+            ? 'Changer ton mot de passe ferme aussi tes sessions sur les autres appareils : si tu le changes parce que tu crains une fuite, un éventuel intrus est déconnecté.'
+            : 'Ton compte se connecte par Google. Un mot de passe te permettrait aussi de te connecter avec ton adresse e-mail.'}
+        </p>
+
+        <div className="mt-4 space-y-3.5">
+          {user.hasPassword && (
+            <label className="block">
+              <Label as="span" className="mb-2 block text-ink-soft">
+                Mot de passe actuel
+              </Label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => {
+                  setCurrentPassword(event.target.value);
+                  setPasswordSaved(false);
+                }}
+                autoComplete="current-password"
+                className="max-w-sm"
+              />
+            </label>
+          )}
+
+          <label className="block">
+            <Label as="span" className="mb-2 block text-ink-soft">
+              Nouveau mot de passe
+            </Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(event) => {
+                setNewPassword(event.target.value);
+                setPasswordSaved(false);
+              }}
+              autoComplete="new-password"
+              minLength={8}
+              className="max-w-sm"
+            />
+            <span className="mt-1.5 block text-xs text-ink-faint">8 caractères minimum.</span>
+          </label>
+        </div>
+
+        {passwordError && <ErrorPanel className="mt-4" message={passwordError} />}
+
+        <Button
+          className="mt-4"
+          variant="secondary"
+          loading={savingPassword}
+          disabled={newPassword.length < 8 || (user.hasPassword && !currentPassword)}
+          onClick={savePassword}
+        >
+          {passwordSaved ? 'Enregistré' : user.hasPassword ? 'Changer' : 'Définir'}
+        </Button>
       </section>
 
       {/* ---------------- Sessions ---------------- */}

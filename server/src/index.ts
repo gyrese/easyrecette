@@ -103,12 +103,21 @@ async function start(): Promise<void> {
       }`,
     );
     console.log(
-      `  Connexion     : ${
+      `  Connexion     : e-mail${
         config.auth.googleConfigured
-          ? `Google (retour sur ${config.auth.google.redirectUri})`
-          : 'non configurée — renseigne GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET'
+          ? ` + Google (retour sur ${config.auth.google.redirectUri})`
+          : ' uniquement (Google non configuré)'
       }\n`,
     );
+
+    // Un déploiement en production sans cookie `secure` est un choix possible
+    // (test avant HTTPS), mais jamais un choix silencieux.
+    if (config.isProd && !config.auth.cookieSecure) {
+      console.warn(
+        '  ⚠ COOKIE_SECURE=false : mots de passe et sessions circulent en clair.\n' +
+          '    Acceptable pour un test, pas pour un site ouvert. Passe en HTTPS dès que possible.\n',
+      );
+    }
   });
 
   const shutdown = async (signal: string): Promise<void> => {

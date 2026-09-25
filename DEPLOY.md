@@ -44,7 +44,7 @@ nano server/.env
 - `CORS_ORIGIN` → le domaine public réel, ex. `https://easyrecette.mondomaine.fr`
   (ou `http://IP_DU_VPS` sans domaine).
 - Au moins une clé IA (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY` ou `OPENAI_API_KEY`).
-- **Connexion Google** — obligatoire pour que les comptes fonctionnent :
+- **Connexion Google** — facultative, la connexion par e-mail fonctionne sans :
   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_SERVER_URL`,
   `PUBLIC_APP_URL` (voir la section suivante).
 - **`SESSION_SECRET`** — obligatoire en production, le serveur refuse de
@@ -56,11 +56,26 @@ nano server/.env
 - `DATABASE_URL` et `NODE_ENV` sont **déjà fixés** dans `docker-compose.prod.yml`
   et n'ont pas besoin d'être définis ici (une valeur y serait ignorée).
 
-### Configurer la connexion Google
+### Avant le HTTPS : `COOKIE_SECURE`
 
-Sans ces clés, le serveur démarre mais la connexion est indisponible — et avec
-elle tout ce qui touche au fichier personnel (import, recettes, courses). Seule
-la page Découvrir reste consultable.
+En production, le cookie de session est réservé au HTTPS. Sur un site servi en
+HTTP simple (`http://IP:port`), le navigateur le refuse : on se connecte, et on
+se retrouve aussitôt déconnecté, sans message d'erreur.
+
+Pour tester le déploiement avant d'avoir un certificat, ajoute à `server/.env` :
+
+```bash
+COOKIE_SECURE=false
+```
+
+Le serveur affiche alors un avertissement à chaque démarrage, et c'est mérité :
+**les mots de passe transitent en clair**. À réserver à un test personnel, puis à
+retirer dès que le site est en HTTPS.
+
+### Configurer la connexion Google (facultatif)
+
+Sans ces clés, seule la connexion par e-mail est proposée. Google exige un nom de
+domaine en HTTPS : une adresse IP n'est pas acceptée comme URI de redirection.
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → créer ou
    choisir un projet.
@@ -97,8 +112,8 @@ TLS (Caddy, Traefik, nginx avec Let's Encrypt), rien de plus à faire.
 ### Première connexion et reprise des recettes existantes
 
 Si la base contient déjà des recettes créées avant l'authentification (compte
-technique `local@cookbook.app`), le **premier** utilisateur qui se connecte en
-hérite : ses recettes deviennent les siennes, et restent privées. Les suivants
+technique `local@cookbook.app`), le **premier** utilisateur qui se connecte —
+par Google ou en créant un compte par e-mail — en hérite : ses recettes deviennent les siennes, et restent privées. Les suivants
 démarrent sur un fichier vide.
 
 Connecte-toi donc en premier avec ton propre compte Google avant d'ouvrir le

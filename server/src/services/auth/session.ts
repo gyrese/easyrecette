@@ -32,6 +32,37 @@ export interface SessionUser {
   name: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Le compte a un mot de passe : la page compte propose alors de le changer. */
+  hasPassword: boolean;
+  /** Le compte est rattaché à Google. */
+  hasGoogle: boolean;
+}
+
+/**
+ * Forme publique d'un compte, unique pour toutes les réponses.
+ *
+ * Le hash et le googleId ne sortent jamais du serveur : seuls leurs
+ * booléens le font. Centraliser la conversion ici évite qu'un futur endpoint
+ * renvoie la ligne brute par oubli.
+ */
+export function toSessionUser(user: {
+  id: string;
+  email: string;
+  name: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  passwordHash: string | null;
+  googleId: string | null;
+}): SessionUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    hasPassword: user.passwordHash !== null,
+    hasGoogle: user.googleId !== null,
+  };
 }
 
 /** Crée la session et pose le cookie. Renvoie sa date d'expiration. */
@@ -61,7 +92,7 @@ export async function createSession(
      * arriverait déconnecté juste après s'être connecté.
      */
     sameSite: 'lax',
-    secure: config.isProd,
+    secure: config.auth.cookieSecure,
     signed: true,
     expires: expiresAt,
     path: '/',
@@ -91,13 +122,7 @@ export async function resolveSession(token: string | undefined): Promise<Session
     return null;
   }
 
-  return {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    displayName: session.user.displayName,
-    avatarUrl: session.user.avatarUrl,
-  };
+  return toSessionUser(session.user);
 }
 
 /** Détruit la session courante et efface le cookie. */
@@ -109,7 +134,7 @@ export async function destroySession(res: Response, token: string | undefined): 
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: config.isProd,
+    secure: config.auth.cookieSecure,
     signed: true,
     path: '/',
   });

@@ -50,9 +50,26 @@ const envSchema = z.object({
    * éphémère est dérivé au démarrage (les sessions ne survivent pas à un
    * redémarrage, ce qui est acceptable et même souhaitable localement).
    */
-  SESSION_SECRET: z.string().min(32).optional(),
+  /*
+   * Une ligne `SESSION_SECRET=` laissée vide (recopiée de .env.example) arrive
+   * en chaîne vide, pas en `undefined`. Sans ce prétraitement, elle échouait
+   * sur la longueur minimale avec un message trompeur, au lieu de tomber dans
+   * le cas « secret absent » et son explication (voir `sessionSecret`).
+   */
+  SESSION_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z
+      .string()
+      .min(32, 'doit faire au moins 32 caractères — génère-le avec : openssl rand -hex 48')
+      .optional(),
+  ),
   /** Durée de vie d'une session, en jours. */
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(400).default(30),
+  /*
+   * Cookie `secure` (HTTPS uniquement). Vide = automatique : actif en
+   * production, inactif en développement. Voir `cookieSecure` plus bas.
+   */
+  COOKIE_SECURE: z.string().optional(),
 
   FETCH_MAX_BYTES: z.coerce.number().int().min(1024).default(2 * 1024 * 1024),
   FETCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
@@ -94,6 +111,25 @@ const sessionSecret = (() => {
   }
 
   return randomBytes(48).toString('hex');
+})();
+
+/**
+ * Faut-il marquer les cookies `secure` ?
+ *
+ * Par défaut oui en production : un cookie de session envoyé en HTTP clair
+ * peut être intercepté sur le réseau, et avec lui la session. Le navigateur
+ * refuse d'ailleurs d'enregistrer un cookie `secure` reçu en HTTP — c'est ce
+ * qui rend la connexion impossible sur un serveur servi sans TLS.
+ *
+ * `COOKIE_SECURE=false` lève cette protection, pour un déploiement de test
+ * pas encore passé en HTTPS. Le prix est réel : les mots de passe et les
+ * cookies de session circulent alors en clair. Le serveur le rappelle à
+ * chaque démarrage plutôt que de le taire.
+ */
+const cookieSecure = (() => {
+  const raw = env.COOKIE_SECURE?.trim().toLowerCase();
+  if (raw === undefined || raw === '') return env.NODE_ENV === 'production';
+  return raw === '1' || raw === 'true';
 })();
 
 /** Un provider n'est utilisable que si sa clé est présente. */
@@ -143,6 +179,7 @@ export const config = {
     appUrl: env.PUBLIC_APP_URL.replace(/\/$/, ''),
     sessionSecret,
     sessionTtlMs: env.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
+    cookieSecure,
   },
 
   fetch: {

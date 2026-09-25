@@ -13,8 +13,8 @@ import { isAiConfigured } from '../services/recipeAI/index.js';
  *
  * Deux limiteurs distincts (§19) : un généreux pour la navigation, un serré
  * pour l'import — qui déclenche des requêtes sortantes et des appels IA
- * payants, donc coûteux à laisser marteler. Un troisième, très serré, protège
- * la connexion : c'est la seule route qui crée des comptes.
+ * payants, donc coûteux à laisser marteler. Deux autres protègent la
+ * connexion : un pour Google, un plus serré pour les mots de passe.
  *
  * Deux périmètres d'accès, marqués explicitement route par route :
  *  - OUVERT : santé, connexion, page Découvrir, lecture d'une fiche. Un
@@ -66,6 +66,40 @@ const authLimiter = rateLimit({
   },
 });
 
+/*
+ * Mots de passe : un compteur PAR geste, pas un seul partagé.
+ *
+ * Avec un compteur commun, deux fautes de frappe à l'inscription entamaient
+ * le quota de connexion — et un test d'inscription raté pouvait bloquer un
+ * changement de mot de passe. Chaque geste a donc sa propre enveloppe :
+ *
+ *  - connexion : 10 échecs par quart d'heure et par IP. `skipSuccessfulRequests`
+ *    ne compte que les échecs — qui se trompe une fois puis réussit n'entame
+ *    rien, qui essaie une liste si. Le coût de scrypt (~50 ms) freine en plus
+ *    chaque tentative ;
+ *  - changement de mot de passe : même règle, pour qu'une session volée ne
+ *    serve pas à deviner le mot de passe actuel ;
+ *  - inscription : 10 comptes par heure et par IP, succès compris cette
+ *    fois — ce qu'on freine ici, c'est la création de comptes en masse.
+ */
+function passwordLimiter(options: { windowMs: number; limit: number; skipSuccessfulRequests: boolean }) {
+  return rateLimit({
+    ...options,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: {
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Trop de tentatives. Réessaie un peu plus tard.',
+      },
+    },
+  });
+}
+
+const loginLimiter = passwordLimiter({ windowMs: 15 * 60_000, limit: 10, skipSuccessfulRequests: true });
+const changePasswordLimiter = passwordLimiter({ windowMs: 15 * 60_000, limit: 10, skipSuccessfulRequests: true });
+const signupLimiter = passwordLimiter({ windowMs: 60 * 60_000, limit: 10, skipSuccessfulRequests: false });
+
 /**
  * Les handlers sont `async` ; Express 4 ne propage pas automatiquement leurs
  * rejets vers le middleware d'erreur. Ce wrapper s'en charge.
@@ -99,6 +133,10 @@ router.get('/auth/google', authLimiter, authController.googleStart);
 router.get('/auth/google/callback', authLimiter, wrap(authController.googleCallback));
 // OUVERT : renvoie `user: null` plutôt qu'un 401 quand personne n'est connecté.
 router.get('/auth/me', authController.me);
+// E-mail + mot de passe : ouverts par nature (on s'inscrit sans être connecté).
+router.post('/auth/signup', signupLimiter, wrap(authController.signup));
+router.post('/auth/login', loginLimiter, wrap(authController.login));
+router.post('/auth/password', requireAuth, changePasswordLimiter, wrap(authController.changePassword));
 router.post('/auth/logout', wrap(authController.logout));
 router.post('/auth/logout-all', requireAuth, wrap(authController.logoutEverywhere));
 router.patch('/auth/profile', requireAuth, wrap(authController.updateProfile));

@@ -1,22 +1,29 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { IconGlobe, IconGoogle } from '../components/Icons';
-import { ErrorPanel, FadeIn, Label } from '../components/ui';
-import { api } from '../lib/api';
+import { Button, ErrorPanel, FadeIn, Input, Label } from '../components/ui';
+import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 /**
  * Page de connexion.
  *
- * Le bouton est un vrai lien, pas un `fetch` : le flux OAuth enchaîne des
- * redirections que seul le navigateur peut suivre. Une requête XHR se
- * ferait couper par la politique CORS de Google dès le premier saut.
+ * Deux portes, qui mènent aux mêmes comptes :
  *
- * L'erreur affichée ici arrive en paramètre d'URL : le callback serveur ne
- * peut pas renvoyer du JSON à un client qui n'écoute pas — c'est une
- * navigation complète. Le message est écrit pour être lu tel quel (voir
- * authController.redirectWithError).
+ *  - e-mail + mot de passe : toujours disponible, c'est la porte par défaut.
+ *    Un seul formulaire bascule entre connexion et inscription plutôt que
+ *    deux pages : la personne qui ne sait plus si elle a un compte n'a pas à
+ *    chercher ailleurs ;
+ *  - Google : proposé seulement si le serveur a ses clés. C'est un vrai lien
+ *    et non un `fetch`, le flux OAuth enchaîne des redirections que seul le
+ *    navigateur peut suivre.
+ *
+ * Les erreurs du flux Google arrivent en paramètre d'URL (le callback serveur
+ * est une navigation complète, il ne peut pas renvoyer du JSON) ; celles du
+ * formulaire arrivent par l'API habituelle.
  */
+
+type Mode = 'login' | 'signup';
 
 /** Ce qu'on peut faire sans compte, dit franchement. */
 const WITHOUT_ACCOUNT = [
@@ -36,18 +43,54 @@ const WITH_ACCOUNT = [
 export function LoginPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading, googleConfigured } = useAuth();
+  const { user, loading, googleConfigured, loginWithPassword, signup } = useAuth();
 
-  const error = params.get('error');
+  const googleError = params.get('error');
   const next = params.get('next') ?? '/recipes';
 
+  const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   /*
-   * Déjà connecté : on s'en va. Le cas arrive en revenant en arrière après
-   * une connexion, ou en ouvrant /login depuis un favori.
+   * Déjà connecté (ou tout juste connecté par le formulaire) : on part vers la
+   * page demandée. Le même effet sert aux deux cas — le formulaire n'a qu'à
+   * mettre à jour le contexte, la redirection suit.
    */
   useEffect(() => {
     if (!loading && user) navigate(next, { replace: true });
   }, [loading, user, next, navigate]);
+
+  function switchMode(target: Mode) {
+    setMode(target);
+    setFormError(null);
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      if (mode === 'signup') {
+        await signup(email, password, name.trim() || null);
+      } else {
+        await loginWithPassword(email, password);
+      }
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.message : 'La connexion a échoué. Réessaie dans un instant.',
+      );
+      // On vide le mot de passe après un échec, pas l'adresse : c'est presque
+      // toujours le mot de passe qui est faux, et retaper son e-mail agace.
+      setPassword('');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
@@ -65,36 +108,136 @@ export function LoginPage() {
             public.
           </p>
 
-          <div className="mt-9">
-            {error && (
-              <ErrorPanel
-                title="Connexion impossible"
-                message={error}
-                className="mb-6 max-w-md"
-              />
+          <div className="mt-9 max-w-md">
+            {googleError && (
+              <ErrorPanel title="Connexion impossible" message={googleError} className="mb-6" />
             )}
 
-            {googleConfigured ? (
-              <a
-                href={api.loginUrl(next)}
-                className="press sheen inline-flex min-h-13 items-center justify-center gap-3 rounded-control border-[1.5px] border-rule-strong bg-paper-raised px-6 py-3 font-mono text-[12px] font-medium tracking-[0.2em] text-ink uppercase"
+            {/* ---------------- Bascule connexion / inscription ---------------- */}
+            <div
+              role="tablist"
+              aria-label="Connexion ou inscription"
+              className="flex overflow-hidden rounded-control border-[1.5px] border-rule-strong"
+            >
+              {(
+                [
+                  ['login', 'Se connecter'],
+                  ['signup', 'Créer un compte'],
+                ] as const
+              ).map(([value, label], index) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === value}
+                  onClick={() => switchMode(value)}
+                  className={`min-h-11 flex-1 px-4 font-mono text-[10px] font-medium tracking-[0.16em] uppercase transition-colors ${
+                    index > 0 ? 'border-l-[1.5px] border-rule-strong' : ''
+                  } ${mode === value ? 'bg-ink text-paper' : 'text-ink/62 hover:bg-lime hover:text-ink'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* ---------------- Formulaire ---------------- */}
+            <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+              {mode === 'signup' && (
+                <label className="block">
+                  <Label as="span" className="mb-2 block text-ink-soft">
+                    Prénom ou pseudo <span className="text-ink-faint normal-case">— facultatif</span>
+                  </Label>
+                  <Input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    autoComplete="nickname"
+                    maxLength={60}
+                  />
+                </label>
+              )}
+
+              <label className="block">
+                <Label as="span" className="mb-2 block text-ink-soft">
+                  Adresse e-mail
+                </Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <Label as="span" className="mb-2 block text-ink-soft">
+                  Mot de passe
+                </Label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  /* `new-password` à l'inscription : le gestionnaire de mots
+                     de passe propose alors d'en générer un, au lieu de
+                     remplir un ancien. */
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  minLength={mode === 'signup' ? 8 : undefined}
+                  required
+                />
+                {mode === 'signup' && (
+                  <span className="mt-1.5 block text-xs text-ink-faint">
+                    8 caractères minimum. Une courte phrase se retient mieux qu'un mot compliqué.
+                  </span>
+                )}
+              </label>
+
+              {formError && <ErrorPanel message={formError} />}
+
+              <Button
+                type="submit"
+                variant="lime"
+                size="lg"
+                loading={submitting}
+                disabled={!email || !password}
+                className="w-full"
               >
-                <IconGoogle className="text-xl" />
-                Continuer avec Google
-              </a>
-            ) : (
-              /* Pas de clés côté serveur : afficher un bouton qui ne peut pas
-                 marcher serait pire que de dire ce qui manque. */
-              <ErrorPanel
-                title="Connexion indisponible"
-                message="Ce serveur n'a pas de clés Google configurées. Renseigne GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET dans server/.env, puis redémarre-le."
-                className="max-w-md"
-              />
+                {mode === 'signup' ? 'Créer mon compte' : 'Se connecter'}
+              </Button>
+
+              {/* Pas de « mot de passe oublié » : il faudrait envoyer un mail,
+                  et le serveur n'en envoie pas. Mieux vaut le dire que
+                  d'afficher un lien qui ne mène nulle part. */}
+              {mode === 'login' && (
+                <p className="text-[12.5px] leading-[1.55] text-ink-faint">
+                  Mot de passe oublié ? La réinitialisation par e-mail n'est pas encore disponible
+                  — contacte l'administrateur du site.
+                </p>
+              )}
+            </form>
+
+            {/* ---------------- Google, s'il est configuré ---------------- */}
+            {googleConfigured && (
+              <>
+                <div className="my-6 flex items-center gap-3" aria-hidden="true">
+                  <span className="h-[1.5px] flex-1 bg-rule" />
+                  <span className="label-mono-sm text-ink-faint">ou</span>
+                  <span className="h-[1.5px] flex-1 bg-rule" />
+                </div>
+
+                <a
+                  href={api.loginUrl(next)}
+                  className="press inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-control border-[1.5px] border-rule-strong bg-paper-raised px-6 py-3 font-mono text-[12px] font-medium tracking-[0.2em] text-ink uppercase"
+                >
+                  <IconGoogle className="text-xl" />
+                  Continuer avec Google
+                </a>
+              </>
             )}
 
-            <p className="mt-5 max-w-md text-[13px] leading-[1.6] text-ink-faint">
-              EasyRecette ne reçoit de Google que ton adresse, ton nom et ta photo de profil.
-              Aucun accès à tes autres données, et rien n'est publié en ton nom.
+            <p className="mt-5 text-[13px] leading-[1.6] text-ink-faint">
+              Ton adresse e-mail n'est jamais affichée à d'autres utilisateurs, même quand tu
+              partages une recette.
             </p>
           </div>
 

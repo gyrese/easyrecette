@@ -4,8 +4,14 @@ import { z } from 'zod';
 import { config } from '../config.js';
 import { prisma } from '../database/client.js';
 import { currentUser } from '../middleware/auth.js';
-import { resolveUserFromGoogle } from '../services/auth/accounts.js';
+import {
+  authenticateWithPassword,
+  changePassword as changeAccountPassword,
+  registerWithPassword,
+  resolveUserFromGoogle,
+} from '../services/auth/accounts.js';
 import { buildAuthUrl, exchangeCodeForProfile } from '../services/auth/google.js';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../services/auth/password.js';
 import {
   OAUTH_STATE_COOKIE,
   SESSION_COOKIE,
@@ -13,6 +19,7 @@ import {
   destroyAllSessions,
   destroySession,
   safeEqual,
+  toSessionUser,
 } from '../services/auth/session.js';
 import { appError, isAppError } from '../utils/errors.js';
 
@@ -64,7 +71,7 @@ export function googleStart(req: Request, res: Response): void {
   res.cookie(OAUTH_STATE_COOKIE, `${state}:${safeNext}`, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: config.isProd,
+    secure: config.auth.cookieSecure,
     signed: true,
     maxAge: STATE_TTL_MS,
     path: '/',
@@ -79,7 +86,7 @@ export async function googleCallback(req: Request, res: Response): Promise<void>
     res.clearCookie(OAUTH_STATE_COOKIE, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.isProd,
+      secure: config.auth.cookieSecure,
       signed: true,
       path: '/',
     });
@@ -170,7 +177,7 @@ export async function logoutEverywhere(req: Request, res: Response): Promise<voi
 const profileSchema = z.object({
   /**
    * Nom d'auteur affiché sur les recettes publiques. Chaîne vide = revenir au
-   * nom du compte Google.
+   * nom du compte.
    */
   displayName: z.string().trim().max(60).nullable(),
 });
@@ -191,10 +198,9 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { displayName },
-    select: { id: true, email: true, name: true, displayName: true, avatarUrl: true },
   });
 
-  res.json({ user: updated });
+  res.json({ user: toSessionUser(updated) });
 }
 
 /**
@@ -213,4 +219,112 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
   await destroySession(res, typeof token === 'string' ? token : undefined);
 
   res.status(204).end();
+}
+
+// ---------------------------------------------------------------------------
+// E-mail + mot de passe
+// ---------------------------------------------------------------------------
+
+/*
+ * Pas de règle de complexité (majuscule, chiffre, symbole…) : elles poussent
+ * vers « Motdepasse1! » sans rendre les mots de passe plus sûrs. La longueur
+ * est ce qui compte, d'où un minimum de 8 et une phrase de passe encouragée.
+ */
+const passwordField = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Le mot de passe doit faire au moins ${PASSWORD_MIN_LENGTH} caractères.`)
+  .max(PASSWORD_MAX_LENGTH, `Le mot de passe ne peut pas dépasser ${PASSWORD_MAX_LENGTH} caractères.`);
+
+const signupSchema = z.object({
+  email: z.string().trim().email('Cette adresse e-mail n\u2019est pas valide.').max(254),
+  password: passwordField,
+  name: z.string().trim().max(60).nullable().optional(),
+});
+
+const loginSchema = z.object({
+  email: z.string().trim().max(254),
+  // Pas de minimum ici : un mot de passe trop court n'a qu'à échouer comme
+  // les autres, sans message qui renseignerait sur la politique appliquée.
+  password: z.string().max(PASSWORD_MAX_LENGTH),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().max(PASSWORD_MAX_LENGTH).nullable().optional(),
+  newPassword: passwordField,
+});
+
+/** Premier message de validation Zod, déjà rédigé pour l'utilisateur. */
+function firstIssue(error: z.ZodError, fallback: string): string {
+  return error.issues[0]?.message ?? fallback;
+}
+
+/** Ouvre la session et renvoie le compte, comme /auth/me le ferait. */
+async function openSession(req: Request, res: Response, userId: string): Promise<void> {
+  await createSession(res, userId, { userAgent: req.get('user-agent'), ip: req.ip });
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  res.json({ user: toSessionUser(user), googleConfigured: config.auth.googleConfigured });
+}
+
+export async function signup(req: Request, res: Response): Promise<void> {
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw appError('INVALID_INPUT', {
+      message: firstIssue(parsed.error, 'Inscription invalide.'),
+      status: 422,
+    });
+  }
+
+  const userId = await registerWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    name: parsed.data.name ?? null,
+  });
+
+  res.status(201);
+  await openSession(req, res, userId);
+}
+
+export async function login(req: Request, res: Response): Promise<void> {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw appError('INVALID_INPUT', {
+      message: 'Adresse ou mot de passe incorrect.',
+      status: 401,
+    });
+  }
+
+  const userId = await authenticateWithPassword(parsed.data.email, parsed.data.password);
+  await openSession(req, res, userId);
+}
+
+/**
+ * Change le mot de passe, puis ferme toutes les AUTRES sessions.
+ *
+ * C'est la raison la plus fréquente de changer de mot de passe : on craint
+ * qu'il ait fuité. Laisser ouvertes les sessions d'un éventuel intrus rendrait
+ * le changement inutile. La session courante est remplacée par une neuve pour
+ * que l'utilisateur, lui, reste connecté.
+ */
+export async function changePassword(req: Request, res: Response): Promise<void> {
+  const user = currentUser(req);
+  const parsed = changePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw appError('INVALID_INPUT', {
+      message: firstIssue(parsed.error, 'Mot de passe invalide.'),
+      status: 422,
+    });
+  }
+
+  await changeAccountPassword(
+    user.id,
+    parsed.data.currentPassword ?? null,
+    parsed.data.newPassword,
+  );
+
+  await destroyAllSessions(user.id);
+  await createSession(res, user.id, { userAgent: req.get('user-agent'), ip: req.ip });
+
+  const refreshed = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  res.json({ user: toSessionUser(refreshed) });
 }

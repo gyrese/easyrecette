@@ -17,9 +17,8 @@ npm run dev                          # API sur :4000, interface sur :5173
 
 Ouvre <http://localhost:5173>.
 
-Sans clés Google (voir ci-dessous), la page **Découvrir** est consultable mais
-la connexion est indisponible — et avec elle l'import, la bibliothèque et la
-liste de courses, qui appartiennent à un compte.
+Crée ton compte avec une adresse e-mail et un mot de passe depuis la page de
+connexion. La connexion Google est une option supplémentaire (voir ci-dessous).
 
 ### Clés d'API
 
@@ -42,10 +41,23 @@ Pour activer la génération IA, renseigne **au moins une** de ces clés dans
 `AI_PROVIDER` choisit lequel essayer en premier ; les autres servent de repli
 automatique en cas de quota atteint ou de panne.
 
-### Connexion Google
+### Comptes
 
-Chaque utilisateur a son propre fichier de recettes, privé par défaut. L'identité
-vient entièrement de Google : aucun mot de passe n'est stocké.
+Chaque utilisateur a son propre fichier de recettes, privé par défaut. Deux
+façons de se connecter, cumulables sur un même compte :
+
+- **e-mail + mot de passe** — toujours disponible. Mots de passe hachés en
+  scrypt, 8 caractères minimum. Il n'y a **pas d'envoi d'e-mail** : ni
+  vérification d'adresse, ni « mot de passe oublié » pour l'instant ;
+- **Google** — optionnel, activé dès que les clés ci-dessous sont renseignées.
+
+Quand Google rattache un compte créé par e-mail, le mot de passe est effacé et
+les sessions fermées. L'adresse n'ayant jamais été vérifiée à l'inscription,
+c'est ce qui empêche un tiers d'inscrire ton adresse avant toi puis de
+récupérer l'accès une fois que tu y as rangé tes recettes. Tu peux redéfinir un
+mot de passe depuis la page compte.
+
+#### Connexion Google (optionnelle)
 
 ```bash
 # server/.env
@@ -337,6 +349,12 @@ Les listes courtes (tags, conseils) sont stockées en JSON texte via
   utilisable. Cookie `httpOnly`, signé (HMAC), `sameSite=lax`, `secure` en
   production. Sessions révocables réellement (enregistrement en base plutôt
   qu'un JWT auto-porté), purgées à l'expiration.
+- **Mots de passe** : scrypt (N=2^15), paramètres stockés avec le hash.
+  Connexion : un seul message d'échec et un temps de réponse constant (hash
+  factice pour les adresses inconnues) — ni le texte ni le chronomètre ne
+  révèlent qui est inscrit. 10 échecs par quart d'heure et par IP, compteurs
+  séparés pour la connexion, l'inscription et le changement de mot de passe.
+  Changer son mot de passe ferme les sessions des autres appareils.
 - **OAuth** : état anti-CSRF dans un cookie signé, comparé en temps constant.
   Le `id_token` de Google est validé côté serveur — audience, émetteur et
   adresse vérifiée contrôlés explicitement, jamais décodé en confiance.

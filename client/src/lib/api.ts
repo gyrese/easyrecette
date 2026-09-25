@@ -144,6 +144,29 @@ export const api = {
    */
   loginUrl: (next = '/') => `${BASE}/auth/google?next=${encodeURIComponent(next)}`,
 
+  /** Inscription par e-mail. Ouvre la session dans la foulée. */
+  signup: (email: string, password: string, name: string | null) =>
+    request<AuthState>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    }),
+
+  loginWithPassword: (email: string, password: string) =>
+    request<AuthState>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
+  /**
+   * Change le mot de passe, ou en définit un sur un compte Google.
+   * `currentPassword` est exigé dès qu'un mot de passe existe déjà.
+   */
+  changePassword: (currentPassword: string | null, newPassword: string) =>
+    request<{ user: AuthUser }>('/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
 
   /** Ferme la session sur tous les appareils. */

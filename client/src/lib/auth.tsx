@@ -38,6 +38,10 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Met à jour le nom d'auteur, localement et côté serveur. */
   setDisplayName: (name: string | null) => Promise<void>;
+  /** Connexion par e-mail. Lève une ApiError au message affichable si elle échoue. */
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string | null) => Promise<void>;
+  changePassword: (currentPassword: string | null, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -81,6 +85,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updated);
   }, []);
 
+  /*
+   * Les trois gestes par mot de passe répondent avec le compte à jour : on le
+   * pose directement dans l'état, sans second aller-retour vers /auth/me.
+   */
+  const loginWithPassword = useCallback(async (email: string, password: string) => {
+    const state = await api.loginWithPassword(email, password);
+    setUser(state.user);
+  }, []);
+
+  const signup = useCallback(async (email: string, password: string, name: string | null) => {
+    const state = await api.signup(email, password, name);
+    setUser(state.user);
+  }, []);
+
+  const changePassword = useCallback(
+    async (currentPassword: string | null, newPassword: string) => {
+      const { user: updated } = await api.changePassword(currentPassword, newPassword);
+      setUser(updated);
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -90,8 +116,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refresh,
       logout,
       setDisplayName,
+      loginWithPassword,
+      signup,
+      changePassword,
     }),
-    [user, loading, googleConfigured, refresh, logout, setDisplayName],
+    [
+      user,
+      loading,
+      googleConfigured,
+      refresh,
+      logout,
+      setDisplayName,
+      loginWithPassword,
+      signup,
+      changePassword,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

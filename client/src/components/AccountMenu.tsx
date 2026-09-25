@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { IconGoogle, IconLogout, IconUser } from './Icons';
+import { IconLogout, IconUser } from './Icons';
 import { Label, Spinner } from './ui';
 
 /**
@@ -12,8 +11,8 @@ import { Label, Spinner } from './ui';
  *  - chargement : un simple disque, sans texte. Afficher « Se connecter »
  *    puis le remplacer par un avatar ferait sauter l'en-tête à chaque
  *    rechargement de page ;
- *  - anonyme : le bouton de connexion, qui garde la page courante en
- *    mémoire pour y revenir ;
+ *  - anonyme : un lien vers la page de connexion, qui garde la page courante
+ *    en mémoire pour y revenir ;
  *  - connecté : l'avatar, qui ouvre le menu.
  *
  * Le menu se ferme au clic extérieur et à Échap. Les deux, parce qu'on
@@ -21,7 +20,7 @@ import { Label, Spinner } from './ui';
  * derrière une navigation est un fantôme.
  */
 export function AccountMenu() {
-  const { user, loading, googleConfigured, authorName, logout } = useAuth();
+  const { user, loading, authorName, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -61,26 +60,18 @@ export function AccountMenu() {
   }
 
   if (!user) {
-    /* Pas de clés Google côté serveur : on mène quand même à /login, qui
-       explique ce qui manque. Un bouton absent laisserait l'utilisateur sans
-       aucune piste. */
+    /* Toujours vers /login, qui propose e-mail et Google : partir directement
+       chez Google écarterait ceux qui ont un compte par mot de passe. La page
+       courante voyage dans `next` pour y revenir après connexion. */
     const next = `${location.pathname}${location.search}`;
 
-    return googleConfigured ? (
-      <a
-        href={api.loginUrl(next)}
+    return (
+      <Link
+        to={`/login?next=${encodeURIComponent(next)}`}
         className="press inline-flex min-h-11 items-center gap-2 rounded-control border-[1.5px] border-rule-strong bg-paper-raised px-[15px] py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] text-ink uppercase"
       >
-        <IconGoogle className="text-base" />
-        <span className="max-sm:hidden">Se connecter</span>
-      </a>
-    ) : (
-      <Link
-        to="/login"
-        className="inline-flex min-h-11 items-center gap-2 rounded-control border-[1.5px] border-rule-strong px-[15px] py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] text-ink uppercase hover:bg-lime"
-      >
         <IconUser className="text-base" />
-        <span className="max-sm:hidden">Compte</span>
+        <span className="max-sm:hidden">Se connecter</span>
       </Link>
     );
   }

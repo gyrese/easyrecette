@@ -21,12 +21,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Compte utilisateur, créé à la première connexion Google.
+/// Compte utilisateur, créé à la première connexion (Google ou e-mail).
 ///
-/// Il n'y a pas de mot de passe en base : l'identité vient entièrement de
-/// Google (voir src/services/auth/google.ts). `email` reste la clé unique
-/// plutôt que `googleId` pour que le compte « local » du MVP puisse être
-/// repris tel quel par son propriétaire à sa première connexion.
+/// Deux façons de prouver son identité, cumulables sur un même compte :
+/// Google (`googleId`) et mot de passe (`passwordHash`). `email` reste la clé
+/// unique pour que le compte « local » du MVP puisse être repris tel quel par
+/// son propriétaire à sa première connexion.
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -38,6 +38,12 @@ model User {
   /// `sub` du jeton Google — identifiant stable, contrairement à l'email qui
   /// peut changer. Null sur les comptes antérieurs à l'authentification.
   googleId String? @unique
+
+  /// Hash scrypt du mot de passe (voir src/services/auth/password.ts), au
+  /// format `scrypt$N$r$p$sel$hash`. Null = compte sans mot de passe
+  /// (connexion Google uniquement). Les paramètres voyagent avec le hash pour
+  /// pouvoir durcir le coût plus tard sans invalider les comptes existants.
+  passwordHash String?
 
   /// Nom affiché à côté d'une recette publique. Distinct de `name` : on peut
   /// vouloir publier sous un pseudo sans renommer son propre compte.

@@ -251,6 +251,10 @@ export interface AuthUser {
   /** Nom d'auteur choisi pour les recettes publiées. */
   displayName: string | null;
   avatarUrl: string | null;
+  /** Le compte a un mot de passe : la page compte propose de le changer. */
+  hasPassword: boolean;
+  /** Le compte est rattaché à Google. */
+  hasGoogle: boolean;
 }
 
 export interface AuthState {

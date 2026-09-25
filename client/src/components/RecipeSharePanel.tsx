@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Recipe } from '../lib/types';
@@ -251,6 +251,7 @@ export function PublicRecipeBanner({
   onCopied: (copyId: string) => void;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -258,7 +259,7 @@ export function PublicRecipeBanner({
     if (!user) {
       // Connexion d'abord, puis retour sur cette fiche : la recette est
       // toujours là, et le geste peut être refait immédiatement.
-      window.location.href = api.loginUrl(`/recipe/${recipe.id}`);
+      navigate(`/login?next=${encodeURIComponent(`/recipe/${recipe.id}`)}`);
       return;
     }
 
