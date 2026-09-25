@@ -6,7 +6,18 @@ import { CATEGORY_LABELS } from '../lib/types';
 import { IconCheck, IconEdit, IconExternal } from './Icons';
 import { ImportNotes } from './ImportProgress';
 import { RecipeEditor } from './RecipeEditor';
-import { Badge, Button, ErrorPanel, Label, RecipeImage, SideNote, WarningPanel } from './ui';
+import {
+  AiDeducedBadge,
+  AiDeducedNotice,
+  Badge,
+  Button,
+  ErrorPanel,
+  FormattedInstruction,
+  Label,
+  RecipeImage,
+  SideNote,
+  WarningPanel,
+} from './ui';
 
 /**
  * Prévisualisation avant enregistrement (§7).
@@ -50,6 +61,11 @@ export function RecipePreview({
 
   const attribution = attributionLine(recipe.source);
 
+  const hasDeducedInfo =
+    recipe.servingsDeduced ||
+    recipe.ingredients.some((item) => item.isDeduced) ||
+    recipe.steps.some((step) => step.isDeduced);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b-[1.5px] border-rule-strong pb-4.5">
@@ -69,6 +85,9 @@ export function RecipePreview({
           {editing ? 'Voir la fiche' : 'Modifier'}
         </Button>
       </header>
+
+      {/* Signalement des éléments déduits par l'IA */}
+      {hasDeducedInfo && <AiDeducedNotice />}
 
       {/* Ce que l'IA n'a pas trouvé — en évidence, pas en bas de page. */}
       <WarningPanel warnings={recipe.warnings} title="Informations manquantes dans la source" />
@@ -113,7 +132,13 @@ export function RecipePreview({
                   <Badge tone="ember">{formatDuration(recipe.totalTime)}</Badge>
                 )}
                 {recipe.difficulty && <Badge>{recipe.difficulty}</Badge>}
-                {recipe.servings !== null && <Badge>{formatServings(recipe.servings)}</Badge>}
+                {recipe.servings !== null && (
+                  <Badge tone={recipe.servingsDeduced ? 'ai' : 'neutral'}>
+                    {recipe.servingsDeduced && <span className="mr-0.5">✨</span>}
+                    {formatServings(recipe.servings)}
+                    {recipe.servingsDeduced && ' (estimé)'}
+                  </Badge>
+                )}
                 {recipe.category && <Badge>{CATEGORY_LABELS[recipe.category]}</Badge>}
                 {recipe.cuisine && <Badge>{recipe.cuisine}</Badge>}
               </div>
@@ -138,9 +163,11 @@ export function RecipePreview({
                             key={index}
                             // Le survol décale la ligne d'un cran : le doigt
                             // sait quelle ligne il vise avant de la lire.
-                            className="flex items-baseline gap-2 border-b border-dotted border-rule py-2 pl-1 text-[15px] transition-[background-color,padding-left] duration-200 last:border-0 hover:bg-lime-soft hover:pl-[9px]"
+                            className={`flex flex-wrap items-baseline gap-2 border-b border-dotted border-rule py-2 pl-1 text-[15px] transition-[background-color,padding-left] duration-200 last:border-0 hover:bg-lime-soft hover:pl-[9px] ${
+                              item.isDeduced ? 'bg-[rgb(109_40_217/0.04)]' : ''
+                            }`}
                           >
-                            <span className="text-ink">
+                            <span className={item.isDeduced ? 'text-[#5b21b6] font-medium' : 'text-ink'}>
                               {formatIngredientLine({
                                 quantity: item.quantity,
                                 unit: item.unit,
@@ -148,8 +175,11 @@ export function RecipePreview({
                                 preparation: item.preparation,
                               })}
                             </span>
+                            {item.isDeduced && <AiDeducedBadge />}
                             {item.note && (
-                              <span className="text-xs text-amber-warn">({item.note})</span>
+                              <span className={`text-xs ${item.isDeduced ? 'text-[#6d28d9]' : 'text-amber-warn'}`}>
+                                ({item.note})
+                              </span>
                             )}
                           </li>
                         ))}
@@ -167,28 +197,39 @@ export function RecipePreview({
                   {recipe.steps.map((step) => (
                     <li
                       key={step.order}
-                      className="flex gap-4 rounded-control p-1.5 transition-colors duration-250 hover:bg-lime-soft"
+                      className={`flex gap-4 rounded-control p-1.5 transition-colors duration-250 hover:bg-lime-soft ${
+                        step.isDeduced ? 'bg-[rgb(109_40_217/0.04)] border-l-2 border-[#6d28d9] pl-3' : ''
+                      }`}
                     >
                       {/* Le numéro composé en gros chiffre pâle : il balise la
                           colonne sans jamais concurrencer l'instruction. */}
-                      <span className="w-11 shrink-0 font-display text-[42px] leading-[0.8] tracking-[-0.04em] text-ink/26 tabular-nums">
+                      <span className={`w-11 shrink-0 font-display text-[42px] leading-[0.8] tracking-[-0.04em] tabular-nums ${
+                        step.isDeduced ? 'text-[#6d28d9]/40' : 'text-ink/26'
+                      }`}>
                         {String(step.order).padStart(2, '0')}
                       </span>
                       <div className="min-w-0 flex-1">
                         {step.title && (
                           <p className="mb-1 font-display text-lg text-ink">{step.title}</p>
                         )}
-                        <p className="text-[15px] leading-[1.62] text-ink-soft">
-                          {step.instruction}
+                        <p className={`text-[15px] leading-[1.62] ${step.isDeduced ? 'text-ink' : 'text-ink-soft'}`}>
+                          <FormattedInstruction text={step.instruction} isDeduced={step.isDeduced} />
                         </p>
-                        {(step.duration !== null || step.temperature !== null) && (
-                          <div className="mt-2.5 flex gap-1.5">
-                            {step.duration !== null && (
-                              <Badge tone="ember">{formatDuration(step.duration)}</Badge>
-                            )}
-                            {step.temperature !== null && <Badge>{step.temperature} °C</Badge>}
-                          </div>
-                        )}
+                        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                          {step.isDeduced && <AiDeducedBadge>Étape déduite</AiDeducedBadge>}
+                          {step.duration !== null && (
+                            <Badge tone={step.isDeduced ? 'ai' : 'ember'}>
+                              {step.isDeduced && <span className="mr-0.5">✨</span>}
+                              {formatDuration(step.duration)}
+                            </Badge>
+                          )}
+                          {step.temperature !== null && (
+                            <Badge tone={step.isDeduced ? 'ai' : 'neutral'}>
+                              {step.isDeduced && <span className="mr-0.5">✨</span>}
+                              {step.temperature} °C
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}

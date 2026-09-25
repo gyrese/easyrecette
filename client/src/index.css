@@ -52,6 +52,14 @@
   --color-danger: #b8321a;
   --color-danger-soft: rgb(184 50 26 / 0.09);
 
+  /* --- Violet IA : ce qui a été déduit / deviné par l'IA ------------- */
+  --color-ai: #6d28d9;
+  --color-ai-text: #5b21b6;
+  --color-ai-soft: rgb(109 40 217 / 0.10);
+  --color-ai-border: rgb(109 40 217 / 0.35);
+  --color-ai-dark: #c4b5fd;
+  --color-ai-dark-soft: rgb(167 139 250 / 0.20);
+
   /* --- Typographie ------------------------------------------------------ */
   --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
@@ -169,6 +177,24 @@
   select,
   textarea {
     touch-action: manipulation;
+  }
+
+  /* Éléments déduits / devinés par l'IA dans les instructions */
+  mark,
+  .ai-deduced {
+    background-color: var(--color-ai-soft);
+    color: var(--color-ai-text);
+    border-bottom: 1.5px dashed var(--color-ai-border);
+    padding: 0.05em 0.25em;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  .cook-dark mark,
+  .cook-dark .ai-deduced {
+    background-color: var(--color-ai-dark-soft);
+    color: var(--color-ai-dark);
+    border-bottom: 1.5px dashed rgba(196, 181, 253, 0.5);
   }
 }
 

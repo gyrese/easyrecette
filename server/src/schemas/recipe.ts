@@ -83,7 +83,7 @@ function cappedList(maxItems: number, maxLength: number) {
 }
 
 export const ingredientSchema = z.object({
-  /** null = quantité non précisée. Jamais remplacée par une estimation. */
+  /** null = quantité non précisée. */
   quantity: z.number().positive().max(100_000).nullable(),
   /** Unité libre mais normalisée par normalizeUnit() : "g", "c. à soupe"… */
   unit: z.string().trim().max(32).nullable(),
@@ -91,10 +91,12 @@ export const ingredientSchema = z.object({
   ingredient: z.string().trim().min(1).max(200),
   /** "émincé", "à température ambiante"… */
   preparation: z.string().trim().max(200).nullable().default(null),
-  /** Note libre, typiquement "quantité non précisée". */
+  /** Note libre, typiquement "quantité non précisée" ou note d'estimation. */
   note: z.string().trim().max(200).nullable().default(null),
   /** Regroupement d'affichage : "Poulet", "Sauce". */
   section: z.string().trim().max(80).nullable().default(null),
+  /** true si la quantité, l'unité ou cet ingrédient a été déduit par l'IA. */
+  isDeduced: z.boolean().default(false),
 });
 export type RecipeIngredientInput = z.infer<typeof ingredientSchema>;
 
@@ -107,6 +109,8 @@ export const stepSchema = z.object({
   duration: minutes.nullable().default(null),
   /** Degrés Celsius. */
   temperature: z.number().int().min(0).max(500).nullable().default(null),
+  /** true si cette étape, sa durée ou sa température a été déduite par l'IA. */
+  isDeduced: z.boolean().default(false),
 });
 export type RecipeStepInput = z.infer<typeof stepSchema>;
 
@@ -144,6 +148,7 @@ export const generatedRecipeSchema = z.object({
   description: z.string().trim().max(2000).default(''),
 
   servings: z.number().int().min(1).max(100).nullable().default(null),
+  servingsDeduced: z.boolean().default(false),
 
   prepTime: minutes.nullable().default(null),
   cookingTime: minutes.nullable().default(null),

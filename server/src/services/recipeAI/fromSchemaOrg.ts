@@ -118,6 +118,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
     title: schema.name ?? content.title ?? 'Recette sans titre',
     description: schema.description ?? '',
     servings,
+    servingsDeduced: false,
     prepTime,
     cookingTime,
     totalTime,
@@ -133,6 +134,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
       preparation: item.preparation,
       note: item.note,
       section: null,
+      isDeduced: false,
     })),
 
     steps: parsedSteps.map((step, index) => ({
@@ -141,6 +143,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
       instruction: step.text,
       duration: null,
       temperature: null,
+      isDeduced: false,
     })),
 
     equipment: [],

@@ -103,6 +103,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
     title: recipe.title,
     description: recipe.description ?? '',
     servings: recipe.servings,
+    servingsDeduced: recipe.servingsDeduced,
     prepTime: recipe.prepTime,
     cookingTime: recipe.cookingTime,
     totalTime: recipe.totalTime,
@@ -121,6 +122,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       preparation: item.preparation,
       note: item.note,
       section: item.section,
+      isDeduced: item.isDeduced,
     })),
 
     steps: recipe.steps.map((step) => ({
@@ -129,6 +131,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       instruction: step.instruction,
       duration: step.duration,
       temperature: step.temperature,
+      isDeduced: step.isDeduced,
     })),
 
     equipment: parseList(recipe.equipment),
@@ -212,6 +215,7 @@ export async function createRecipe(
         description: input.description || null,
         imageUrl: input.imageUrl,
         servings: input.servings,
+        servingsDeduced: input.servingsDeduced ?? false,
         prepTime: input.prepTime,
         cookingTime: input.cookingTime,
         totalTime: input.totalTime,
@@ -234,6 +238,7 @@ export async function createRecipe(
             instruction: step.instruction,
             duration: step.duration,
             temperature: step.temperature,
+            isDeduced: step.isDeduced ?? false,
           })),
         },
       },
@@ -253,6 +258,7 @@ export async function createRecipe(
           note: item.note,
           section: item.section,
           position: index,
+          isDeduced: item.isDeduced ?? false,
         },
       });
     }
@@ -324,6 +330,7 @@ export async function updateRecipe(
         ...(input.description !== undefined && { description: input.description || null }),
         ...(input.imageUrl !== undefined && { imageUrl: input.imageUrl }),
         ...(input.servings !== undefined && { servings: input.servings }),
+        ...(input.servingsDeduced !== undefined && { servingsDeduced: input.servingsDeduced }),
         ...(input.prepTime !== undefined && { prepTime: input.prepTime }),
         ...(input.cookingTime !== undefined && { cookingTime: input.cookingTime }),
         ...(input.totalTime !== undefined && { totalTime: input.totalTime }),
@@ -349,6 +356,7 @@ export async function updateRecipe(
             instruction: step.instruction,
             duration: step.duration,
             temperature: step.temperature,
+            isDeduced: step.isDeduced ?? false,
           },
         });
       }
@@ -369,6 +377,7 @@ export async function updateRecipe(
             note: item.note,
             section: item.section,
             position: index,
+            isDeduced: item.isDeduced ?? false,
           },
         });
       }

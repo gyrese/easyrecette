@@ -46,9 +46,9 @@ INGRÉDIENTS OBSERVÉS :
 ÉTAPES OBSERVÉES :
 (dans l'ordre, une action par ligne)
 
-RÈGLE ABSOLUE : n'invente aucune quantité, aucune durée, aucune température.
-Si une quantité n'est ni écrite ni dite, écris « non précisé » — même si tu peux l'estimer à l'œil. Une estimation visuelle n'est pas une donnée.
-Si tu vois un four sans que la température soit indiquée, écris « température non précisée ».
+RÈGLE FACTUELLE : distingue ce qui est explicitement dit/écrit de ce qui n'est que visible.
+Si une quantité n'est ni écrite ni dite, écris « non précisé » (tu peux ajouter une estimation visuelle indicative entre parenthèses si le geste est net, ex: « non précisé (visuel : environ 2 c. à soupe) »).
+Si tu vois un four ou une cuisson sans que la température soit indiquée, écris « température non précisée ».
 
 Si la vidéo ne montre pas de préparation culinaire, réponds uniquement : PAS_UNE_RECETTE`;
 

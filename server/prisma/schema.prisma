@@ -100,6 +100,8 @@ model Recipe {
   posterUrl   String?
 
   servings Int?
+  /// true si le nombre de portions a été déduit par l'IA car absent de la source.
+  servingsDeduced Boolean @default(false)
 
   /// Durées en minutes.
   prepTime    Int?
@@ -231,6 +233,9 @@ model RecipeIngredient {
   /// Regroupement facultatif dans la fiche : "Poulet", "Sauce"
   section String?
 
+  /// true si la quantité, l'unité ou cet ingrédient a été déduit par l'IA.
+  isDeduced Boolean @default(false)
+
   position Int @default(0)
 
   recipeId String
@@ -256,6 +261,9 @@ model RecipeStep {
   duration Int?
   /// Degrés Celsius.
   temperature Int?
+
+  /// true si cette étape, sa durée ou sa température a été déduite par l'IA.
+  isDeduced Boolean @default(false)
 
   recipeId String
   recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)

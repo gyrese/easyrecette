@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { IconCheck, IconClose, IconReset } from '../components/Icons';
-import { Button, ErrorPanel, Spinner } from '../components/ui';
+import { Button, ErrorPanel, FormattedInstruction, Spinner } from '../components/ui';
 import { useTimer } from '../hooks/useTimer';
 import { ApiError, api } from '../lib/api';
 import { formatTimer } from '../lib/format';
@@ -247,8 +247,17 @@ export function CookModePage() {
             <div>
               {/* Le numéro d'étape en très grand : le repère qu'on retrouve
                   d'un coup d'œil en revenant au plan de travail. */}
-              <div className="font-display text-[clamp(70px,10vw,130px)] leading-[0.8] tracking-[-0.05em] text-[#f2ede3]/18 tabular-nums">
-                {String(index + 1).padStart(2, '0')}
+              <div className="flex items-center gap-3">
+                <div className={`font-display text-[clamp(70px,10vw,130px)] leading-[0.8] tracking-[-0.05em] tabular-nums ${
+                  step.isDeduced ? 'text-[#c4b5fd]/30' : 'text-[#f2ede3]/18'
+                }`}>
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+                {step.isDeduced && (
+                  <span className="label-mono-sm inline-flex items-center gap-1 rounded-control border border-[#c4b5fd]/40 bg-[#c4b5fd]/15 px-2 py-1 text-[11px] text-[#c4b5fd] font-medium">
+                    <span aria-hidden="true">✨</span> Étape déduite par l'IA
+                  </span>
+                )}
               </div>
 
               {step.title && (
@@ -259,12 +268,19 @@ export function CookModePage() {
 
               {/* La serif d'affiche, à la taille de l'écran : c'est le texte
                   que l'on lit debout, à un bras du plan de travail. */}
-              <p className="mt-4.5 font-display text-[clamp(30px,4.4vw,56px)] leading-[1.08] tracking-[-0.032em] text-[#f2ede3] text-pretty">
-                {step.instruction}
+              <p className={`cook-dark mt-4.5 font-display text-[clamp(30px,4.4vw,56px)] leading-[1.08] tracking-[-0.032em] text-pretty ${
+                step.isDeduced ? 'text-[#f2ede3]' : 'text-[#f2ede3]'
+              }`}>
+                <FormattedInstruction text={step.instruction} isDeduced={step.isDeduced} />
               </p>
 
               {step.temperature !== null && (
-                <p className="mt-6 inline-flex items-center gap-2 rounded-control border-[1.5px] border-[#d8f250] px-4 py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] text-[#d8f250] uppercase">
+                <p className={`mt-6 inline-flex items-center gap-2 rounded-control border-[1.5px] px-4 py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] uppercase ${
+                  step.isDeduced
+                    ? 'border-[#c4b5fd] text-[#c4b5fd] bg-[#c4b5fd]/10'
+                    : 'border-[#d8f250] text-[#d8f250]'
+                }`}>
+                  {step.isDeduced && '✨ '}
                   {step.temperature} °C
                 </p>
               )}
@@ -444,7 +460,9 @@ export function CookModePage() {
                   {recipe.ingredients.map((item, itemIndex) => (
                     <li
                       key={itemIndex}
-                      className="border-b border-dotted border-[#f2ede3]/20 py-3 text-lg text-[#f2ede3]/88 last:border-0"
+                      className={`border-b border-dotted border-[#f2ede3]/20 py-3 text-lg last:border-0 ${
+                        item.isDeduced ? 'text-[#c4b5fd]' : 'text-[#f2ede3]/88'
+                      }`}
                     >
                       {formatIngredientLine({
                         quantity: item.quantity,
@@ -452,6 +470,11 @@ export function CookModePage() {
                         label: item.ingredient,
                         preparation: item.preparation,
                       })}
+                      {item.isDeduced && (
+                        <span className="ml-2.5 label-mono-sm inline-flex items-center gap-1 rounded-control border border-[#c4b5fd]/40 bg-[#c4b5fd]/15 px-1.5 py-0.5 text-[10px] text-[#c4b5fd]">
+                          ✨ Déduit par l'IA
+                        </span>
+                      )}
                       {item.quantity === null && item.note && (
                         <span className="ml-2 text-sm text-[#e0a83c]">({item.note})</span>
                       )}

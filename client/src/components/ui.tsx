@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import { useMemo, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { IconWarning } from './Icons';
 
 /**
@@ -207,7 +207,7 @@ export function Badge({
   className = '',
 }: {
   children: ReactNode;
-  tone?: 'neutral' | 'ember' | 'lime' | 'olive' | 'amber';
+  tone?: 'neutral' | 'ember' | 'lime' | 'olive' | 'amber' | 'ai';
   className?: string;
 }) {
   const tones = {
@@ -216,6 +216,7 @@ export function Badge({
     lime: 'bg-lime text-ink',
     olive: 'bg-olive-soft text-olive',
     amber: 'bg-amber-soft text-amber-warn',
+    ai: 'bg-[rgb(109_40_217/0.10)] text-[#5b21b6] border-[#6d28d9]/40',
   };
 
   return (
@@ -223,6 +224,108 @@ export function Badge({
       className={`label-mono-sm inline-flex items-center gap-1 rounded-control border-[1.5px] border-rule-strong px-2 py-1 ${tones[tone]} ${className}`}
     >
       {children}
+    </span>
+  );
+}
+
+/**
+ * Pastille signalant qu'une information a été déduite ou estimée par l'IA.
+ * Écrite dans une couleur distincte (violet/indigo).
+ */
+export function AiDeducedBadge({
+  children = "Déduit par l'IA",
+  className = '',
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      title="Cette information manquante dans la source/vidéo a été déduite par l'IA"
+      className={`label-mono-sm inline-flex items-center gap-1 rounded-control border border-[rgb(109_40_217/0.3)] bg-[rgb(109_40_217/0.1)] px-1.5 py-0.5 text-[10px] text-[#5b21b6] font-medium ${className}`}
+    >
+      <span aria-hidden="true" className="text-[11px] leading-none">✨</span>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Bandeau d'information quand la recette contient des éléments déduits par l'IA.
+ */
+export function AiDeducedNotice({
+  className = '',
+}: {
+  className?: string;
+}) {
+  return (
+    <div
+      className={`border-l-[3px] border-[#6d28d9] bg-[rgb(109_40_217/0.08)] px-4 py-3.5 ${className}`}
+      role="note"
+    >
+      <p className="label-mono-sm flex items-center gap-2 font-medium text-[#5b21b6]">
+        <span className="text-sm">✨</span>
+        Reconstitution par l'IA · Parties devinées
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-ink/80">
+        Les informations absentes de la vidéo (quantités, durées, températures) ont été déduites par l'IA et sont écrites en <strong className="text-[#5b21b6] font-medium">violet</strong>. Vérifiez-les avant de cuisiner.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Affiche le texte d'une instruction en stylant en violet toute balise <mark>...</mark>
+ * ou l'instruction complète si elle a été déduite par l'IA.
+ */
+export function FormattedInstruction({
+  text,
+  isDeduced = false,
+  className = '',
+}: {
+  text: string;
+  isDeduced?: boolean;
+  className?: string;
+}) {
+  const parts = useMemo(() => {
+    if (!text.includes('<mark>')) {
+      return isDeduced ? (
+        <mark className="ai-deduced" title="Déduit ou estimé par l'IA">
+          {text}
+        </mark>
+      ) : null;
+    }
+    const regex = /<mark>(.*?)<\/mark>/gi;
+    const elements: ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(text.slice(lastIndex, match.index));
+      }
+      elements.push(
+        <mark
+          key={match.index}
+          className="ai-deduced"
+          title="Déduit ou estimé par l'IA"
+        >
+          {match[1]}
+        </mark>,
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      elements.push(text.slice(lastIndex));
+    }
+
+    return elements;
+  }, [text, isDeduced]);
+
+  return (
+    <span className={className}>
+      {parts ?? text}
     </span>
   );
 }

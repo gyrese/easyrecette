@@ -65,6 +65,7 @@ export function RecipeEditor({ recipe, onChange }: Props) {
           ingredient: '',
           preparation: null,
           note: null,
+          isDeduced: false,
           // Nouvelle ligne dans la même section que la précédente : c'est
           // presque toujours ce qu'on veut en ajoutant à la suite.
           section: recipe.ingredients.at(-1)?.section ?? null,
@@ -92,6 +93,7 @@ export function RecipeEditor({ recipe, onChange }: Props) {
           instruction: '',
           duration: null,
           temperature: null,
+          isDeduced: false,
         },
       ],
     });
@@ -309,9 +311,23 @@ export function RecipeEditor({ recipe, onChange }: Props) {
                     className="min-h-9 py-1.5 text-sm"
                   />
                 </div>
-                {item.note && (
-                  <p className="px-1 text-xs text-amber-warn">{item.note}</p>
-                )}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+                  {item.note ? (
+                    <p className="px-1 text-xs text-amber-warn">{item.note}</p>
+                  ) : <div />}
+                  <button
+                    type="button"
+                    onClick={() => setIngredient(index, { isDeduced: !item.isDeduced })}
+                    className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${
+                      item.isDeduced
+                        ? 'border-[#6d28d9]/50 bg-[rgb(109_40_217/0.1)] text-[#5b21b6] font-medium'
+                        : 'border-rule text-ink/40 hover:text-ink'
+                    }`}
+                    title="Cliquer pour changer le statut déduit par l'IA"
+                  >
+                    <span>✨</span> {item.isDeduced ? "Déduit par l'IA" : 'Manuel'}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -422,6 +438,21 @@ export function RecipeEditor({ recipe, onChange }: Props) {
                     className="min-h-9 py-1.5 text-sm"
                   />
                 </Field>
+              </div>
+
+              <div className="mt-2.5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setStep(index, { isDeduced: !step.isDeduced })}
+                  className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${
+                    step.isDeduced
+                      ? 'border-[#6d28d9]/50 bg-[rgb(109_40_217/0.1)] text-[#5b21b6] font-medium'
+                      : 'border-rule text-ink/40 hover:text-ink'
+                  }`}
+                  title="Cliquer pour changer le statut déduit par l'IA"
+                >
+                  <span>✨</span> {step.isDeduced ? "Étape déduite par l'IA" : 'Étape manuelle'}
+                </button>
               </div>
             </div>
           ))}

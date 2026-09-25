@@ -52,6 +52,8 @@ export interface RecipeIngredient {
   preparation: string | null;
   note: string | null;
   section: string | null;
+  /** true si déduit ou estimé par l'IA car absent de la source. */
+  isDeduced?: boolean;
 }
 
 export interface RecipeStep {
@@ -60,6 +62,8 @@ export interface RecipeStep {
   instruction: string;
   duration: number | null;
   temperature: number | null;
+  /** true si l'étape, sa durée ou sa température a été déduite par l'IA. */
+  isDeduced?: boolean;
 }
 
 export interface RecipeSource {
@@ -74,6 +78,7 @@ export interface GeneratedRecipe {
   title: string;
   description: string;
   servings: number | null;
+  servingsDeduced?: boolean;
   prepTime: number | null;
   cookingTime: number | null;
   totalTime: number | null;
