@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { router } from './routes/index.js';
 import { cleanExpiredSessions } from './services/auth/session.js';
 import { cleanTempMedia, MEDIA_ROOT } from './services/media/storage.js';
+import { resumePendingStepFrames } from './services/media/stepFrames.js';
 import { isAiConfigured } from './services/recipeAI/index.js';
 
 const app = express();
@@ -93,6 +94,10 @@ async function start(): Promise<void> {
   // par une tâche planifiée à surveiller.
   const purged = await cleanExpiredSessions();
   if (purged > 0) console.log(`  ${purged} session(s) expirée(s) purgée(s)`);
+
+  // Les illustrations d'étapes interrompues par l'arrêt reprennent en fond.
+  const resumed = await resumePendingStepFrames();
+  if (resumed > 0) console.log(`  ${resumed} illustration(s) d'étapes reprise(s)`);
 
   const server = app.listen(config.port, () => {
     console.log(`\n  CookBook API  →  http://localhost:${config.port}/api`);

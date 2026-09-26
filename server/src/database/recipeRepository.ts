@@ -15,8 +15,10 @@ import {
   attachVideoToRecipe,
   deleteRecipeMedia,
   deleteUserPhoto,
+  isStepImageOf,
   saveUserPhoto,
 } from '../services/media/storage.js';
+import { canIllustrateSteps, scheduleStepFrames } from '../services/media/stepFrames.js';
 import { publicAuthorName } from '../services/auth/accounts.js';
 
 /**
@@ -57,6 +59,8 @@ export interface RecipeDto extends GeneratedRecipe {
   /// Vidéo d'origine conservée localement, servie sous /media.
   videoUrl: string | null;
   posterUrl: string | null;
+  /// Illustration des étapes en tâche de fond. Voir services/media/stepFrames.ts.
+  stepFramesStatus: 'pending' | 'done' | 'failed' | null;
   /// Photo du plat prise par l'utilisateur. Prime sur `imageUrl` à l'affichage.
   userPhotoUrl: string | null;
   isFavorite: boolean;
@@ -113,6 +117,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
     imageUrl: recipe.imageUrl,
     videoUrl: recipe.videoUrl,
     posterUrl: recipe.posterUrl,
+    stepFramesStatus: recipe.stepFramesStatus as RecipeDto['stepFramesStatus'],
     userPhotoUrl: recipe.userPhotoUrl,
 
     ingredients: recipe.ingredients.map((item) => ({
@@ -132,6 +137,8 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       duration: step.duration,
       temperature: step.temperature,
       isDeduced: step.isDeduced,
+      videoTime: step.videoTime,
+      imageUrl: step.imageUrl,
     })),
 
     equipment: parseList(recipe.equipment),
@@ -289,11 +296,13 @@ export async function createRecipe(
    * ffmpeg, et un échec disque annulerait l'enregistrement d'une recette
    * par ailleurs valide. La recette prime ; la vidéo est un complément.
    */
+  let saved = recipe;
+
   if (input.importId) {
     try {
       const media = await attachVideoToRecipe(input.importId, recipe.id);
       if (media) {
-        const withMedia = await prisma.recipe.update({
+        saved = await prisma.recipe.update({
           where: { id: recipe.id },
           data: {
             videoUrl: media.videoUrl,
@@ -304,14 +313,26 @@ export async function createRecipe(
           },
           include: recipeInclude,
         });
-        return toDto(withMedia, userId);
       }
     } catch (error) {
       console.warn('[media] rattachement de la vidéo impossible :', error);
     }
   }
 
-  return toDto(recipe, userId);
+  /*
+   * Illustration des étapes, en tâche de fond : la réponse part tout de
+   * suite avec le statut « pending », les images arrivent ensuite.
+   */
+  if (canIllustrateSteps(saved)) {
+    saved = await prisma.recipe.update({
+      where: { id: recipe.id },
+      data: { stepFramesStatus: 'pending' },
+      include: recipeInclude,
+    });
+    scheduleStepFrames(recipe.id);
+  }
+
+  return toDto(saved, userId);
 }
 
 export async function updateRecipe(
@@ -357,6 +378,11 @@ export async function updateRecipe(
             duration: step.duration,
             temperature: step.temperature,
             isDeduced: step.isDeduced ?? false,
+            // Repris tels que le client les renvoie, l'image seulement si
+            // c'est bien un fichier produit pour cette recette.
+            videoTime: step.videoTime,
+            imageUrl:
+              step.imageUrl && isStepImageOf(recipeId, step.imageUrl) ? step.imageUrl : null,
           },
         });
       }

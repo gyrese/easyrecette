@@ -88,24 +88,40 @@ export async function attachVideoToRecipe(
  * ffmpeg est facultatif : sans lui, la recette garde simplement l'image
  * fournie par la plateforme, ou aucune.
  */
-async function extractPoster(
+export async function extractPoster(
   videoPath: string,
   targetDir: string,
   recipeId: string,
 ): Promise<string | null> {
-  const posterPath = path.join(targetDir, 'poster.jpg');
+  const ok = await extractFrame(videoPath, 1, path.join(targetDir, 'poster.jpg'));
+  return ok ? `/media/recipes/${sanitize(recipeId)}/poster.jpg` : null;
+}
 
+/**
+ * Écrit dans `outputPath` l'image de la vidéo à l'instant `seconds`.
+ *
+ * Renvoie false sans lever d'erreur quand ffmpeg est absent, échoue, ou que
+ * l'instant dépasse la fin de la vidéo (ffmpeg n'écrit alors rien) : une
+ * image manquante n'est jamais une raison de faire échouer l'appelant.
+ */
+export async function extractFrame(
+  videoPath: string,
+  seconds: number,
+  outputPath: string,
+): Promise<boolean> {
   const ok = await new Promise<boolean>((resolve) => {
     const child = spawn(
       'ffmpeg',
       [
         '-y',
-        '-ss', '1',
+        // `-ss` avant `-i` : recherche rapide sur l'image clé, puis décodage
+        // exact jusqu'à l'instant voulu.
+        '-ss', seconds.toFixed(2),
         '-i', videoPath,
         '-frames:v', '1',
         '-vf', 'scale=800:-1',
         '-q:v', '4',
-        posterPath,
+        outputPath,
       ],
       { windowsHide: true },
     );
@@ -125,15 +141,41 @@ async function extractPoster(
     });
   });
 
-  if (!ok || !existsSync(posterPath)) return null;
+  if (!ok || !existsSync(outputPath)) return false;
 
-  const stats = await stat(posterPath);
+  const stats = await stat(outputPath);
   if (stats.size === 0) {
-    await rm(posterPath, { force: true });
-    return null;
+    await rm(outputPath, { force: true });
+    return false;
   }
 
-  return `/media/recipes/${sanitize(recipeId)}/poster.jpg`;
+  return true;
+}
+
+/** Adresse publique d'un fichier du dossier d'une recette. */
+export function recipeMediaUrl(recipeId: string, fileName: string): string {
+  return `/media/recipes/${sanitize(recipeId)}/${fileName}`;
+}
+
+/** Chemin disque d'un fichier servi sous /media/recipes/<id>/, ou null. */
+export function recipeMediaPath(recipeId: string, url: string): string | null {
+  const prefix = recipeMediaUrl(recipeId, '');
+  if (!url.startsWith(prefix)) return null;
+  const fileName = url.slice(prefix.length);
+  if (!/^[A-Za-z0-9_.-]+$/.test(fileName) || fileName.startsWith('.')) return null;
+  return path.join(recipeDirFor(recipeId), fileName);
+}
+
+/**
+ * Vrai si `url` désigne une image d'étape de CETTE recette.
+ *
+ * L'image d'une étape revient du client à chaque modification de la fiche :
+ * on n'accepte que les fichiers produits par le serveur, pour qu'une fiche
+ * publique ne puisse pas afficher une adresse arbitraire.
+ */
+export function isStepImageOf(recipeId: string, url: string): boolean {
+  const prefix = recipeMediaUrl(recipeId, '');
+  return url.startsWith(prefix) && /^step-\d+-\d+\.jpg$/.test(url.slice(prefix.length));
 }
 
 /**

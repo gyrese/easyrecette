@@ -30,6 +30,12 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4.1'),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  /**
+   * Modèle qui situe les étapes dans la vidéo (images des étapes). Distinct
+   * de GEMINI_MODEL : sur une vidéo, gemini-2.5-flash a mis plus de trois
+   * minutes là où gemini-3.5-flash répond en dix secondes.
+   */
+  GEMINI_STEPS_MODEL: z.string().default('gemini-3.5-flash'),
 
   YOUTUBE_API_KEY: z.string().optional(),
 
@@ -162,7 +168,11 @@ export const config = {
     order: providerOrder,
     anthropic: { apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL },
     openai: { apiKey: env.OPENAI_API_KEY, model: env.OPENAI_MODEL },
-    gemini: { apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL },
+    gemini: {
+      apiKey: env.GEMINI_API_KEY,
+      model: env.GEMINI_MODEL,
+      stepsModel: env.GEMINI_STEPS_MODEL,
+    },
   },
 
   youtube: { apiKey: env.YOUTUBE_API_KEY },

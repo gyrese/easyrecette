@@ -284,6 +284,17 @@ export function CookModePage() {
                   {step.temperature} °C
                 </p>
               )}
+
+              {/* L'image de la vidéo : un coup d'œil suffit à vérifier qu'on
+                  en est au même point, là où le texte demande une relecture. */}
+              {step.imageUrl && (
+                <img
+                  src={step.imageUrl}
+                  alt=""
+                  className="mt-7 block max-h-[34vh] w-auto max-w-full rounded-card border-[1.5px] object-cover"
+                  style={{ borderColor: RULE }}
+                />
+              )}
             </div>
 
             {/* --- Colonne minuteur --- */}

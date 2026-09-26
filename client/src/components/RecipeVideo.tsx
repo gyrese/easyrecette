@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { IconPause, IconPlay } from './Icons';
 
 /**
@@ -14,20 +14,44 @@ import { IconPause, IconPlay } from './Icons';
  * `preload="none"` est délibéré : la vidéo pèse quelques mégaoctets et la
  * plupart des consultations n'en ont pas besoin. Elle ne se charge qu'au
  * premier clic.
+ *
+ * La fiche peut aussi la piloter via `ref.seek()` : un clic sur l'image d'une
+ * étape amène la vidéo à l'écran et la lance à l'instant du geste.
  */
+export interface RecipeVideoHandle {
+  seek(seconds: number): void;
+}
+
 export function RecipeVideo({
   src,
   poster,
   title,
+  ref,
 }: {
   src: string;
   poster: string | null;
   title: string;
+  ref?: Ref<RecipeVideoHandle>;
 }) {
+  const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    seek(seconds: number) {
+      const video = videoRef.current;
+      if (!video) return;
+
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Avec `preload="none"`, rien n'est chargé : fixer l'instant suffit,
+      // le navigateur ira le chercher au lancement de la lecture.
+      video.currentTime = seconds;
+      void video.play().catch(() => setFailed(true));
+      setStarted(true);
+    },
+  }));
 
   function toggle() {
     const video = videoRef.current;
@@ -44,7 +68,7 @@ export function RecipeVideo({
   if (failed) return null;
 
   return (
-    <section className="mt-9">
+    <section ref={sectionRef} className="mt-9 scroll-mt-28">
       <h2 className="mb-3.5 border-b-[1.5px] border-rule-strong pb-3.5 text-[34px] leading-none tracking-[-0.03em]">
         La vidéo d'origine
       </h2>

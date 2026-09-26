@@ -64,6 +64,10 @@ export interface RecipeStep {
   temperature: number | null;
   /** true si l'étape, sa durée ou sa température a été déduite par l'IA. */
   isDeduced?: boolean;
+  /** Instant de la vidéo d'origine où l'étape est montrée, en secondes. */
+  videoTime?: number | null;
+  /** Image extraite de la vidéo à cet instant. */
+  imageUrl?: string | null;
 }
 
 export interface RecipeSource {
@@ -103,6 +107,11 @@ export interface Recipe extends GeneratedRecipe {
   videoUrl: string | null;
   /** Image extraite de cette vidéo. */
   posterUrl: string | null;
+  /**
+   * Illustration des étapes par des images de la vidéo, faite par le serveur
+   * après l'enregistrement. "pending" : la fiche est rechargée en attendant.
+   */
+  stepFramesStatus: 'pending' | 'done' | 'failed' | null;
   /**
    * Photo du plat prise par l'utilisateur. Prime sur `imageUrl` partout où la
    * recette est illustrée — voir `displayImage()`.

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { groupBySection } from '../components/RecipePreview';
 import { ServingsStepper } from '../components/RecipeEditor';
-import { RecipeVideo } from '../components/RecipeVideo';
+import { RecipeVideo, type RecipeVideoHandle } from '../components/RecipeVideo';
 import { RecipePhoto } from '../components/RecipePhoto';
 import { RatingPanel, Stars } from '../components/RecipeRating';
 import { PublicRecipeBanner, RecipeSharePanel } from '../components/RecipeSharePanel';
@@ -36,6 +36,7 @@ import {
   formatDate,
   formatDuration,
   formatDurationShort,
+  formatTimer,
   formatTriedAt,
 } from '../lib/format';
 import { formatQuantity, scaleQuantity } from '../lib/units';
@@ -85,6 +86,7 @@ export function RecipePage() {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [addingToList, setAddingToList] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const videoRef = useRef<RecipeVideoHandle>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -110,6 +112,46 @@ export function RecipePage() {
       cancelled = true;
     };
   }, [id]);
+
+  /*
+   * Images des étapes : le serveur les prépare en tâche de fond juste après
+   * l'enregistrement (20 à 60 secondes). Tant qu'il annonce « pending », on
+   * relit la fiche à intervalle régulier pour les afficher dès qu'elles
+   * arrivent, sans que l'utilisateur ait à recharger la page. Plafonné à
+   * cinq minutes : au-delà, un rechargement manuel fera l'affaire.
+   */
+  const framesPending = recipe?.stepFramesStatus === 'pending';
+
+  useEffect(() => {
+    if (!id || !framesPending) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = () => {
+      timer = setTimeout(() => {
+        attempts++;
+        api
+          .getRecipe(id)
+          .then((result) => {
+            if (cancelled) return;
+            // Seules les données issues de la tâche sont reprises : les
+            // portions choisies et les cases cochées restent en place.
+            setRecipe(result);
+            if (result.stepFramesStatus === 'pending' && attempts < 75) poll();
+          })
+          .catch(() => {
+            if (!cancelled && attempts < 75) poll();
+          });
+      }, 4000);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [id, framesPending]);
 
   /** Ingrédients recalculés pour le nombre de portions affiché. */
   const scaledSections = useMemo(() => {
@@ -606,8 +648,14 @@ export function RecipePage() {
 
         {/* ---------------- Méthode ---------------- */}
         <section className="surface overflow-hidden p-0">
-          <div className="border-b-[1.5px] border-rule-strong px-6 pt-6 pb-3.5">
+          <div className="flex items-baseline justify-between gap-3 border-b-[1.5px] border-rule-strong px-6 pt-6 pb-3.5">
             <h2 className="text-[34px]">Méthode</h2>
+            {framesPending && (
+              <span className="label-mono-sm inline-flex items-center gap-1.5 text-ink-soft">
+                <Spinner className="size-3.5" />
+                Images de la vidéo en préparation
+              </span>
+            )}
           </div>
 
           <ol>
@@ -652,6 +700,13 @@ export function RecipePage() {
                       </Badge>
                     )}
                   </div>
+
+                  <StepFrame
+                    order={step.order}
+                    imageUrl={step.imageUrl ?? null}
+                    videoTime={recipe.videoUrl ? (step.videoTime ?? null) : null}
+                    onPlay={(seconds) => videoRef.current?.seek(seconds)}
+                  />
                 </div>
               </li>
             ))}
@@ -699,7 +754,12 @@ export function RecipePage() {
       )}
 
       {recipe.videoUrl && (
-        <RecipeVideo src={recipe.videoUrl} poster={recipe.posterUrl} title={recipe.title} />
+        <RecipeVideo
+          ref={videoRef}
+          src={recipe.videoUrl}
+          poster={recipe.posterUrl}
+          title={recipe.title}
+        />
       )}
 
       {recipe.tags.length > 0 && (
@@ -742,5 +802,72 @@ export function RecipePage() {
         </footer>
       )}
     </article>
+  );
+}
+
+/**
+ * L'image de la vidéo qui illustre une étape.
+ *
+ * Quand l'instant est connu, l'image est un bouton : elle lance la vidéo
+ * d'origine à ce moment-là. C'est souvent plus parlant qu'une image fixe pour
+ * un geste (plier, rouler, émincer). Sans image mais avec un instant — ffmpeg
+ * a pu échouer —, il reste le lien vers la vidéo.
+ */
+function StepFrame({
+  order,
+  imageUrl,
+  videoTime,
+  onPlay,
+}: {
+  order: number;
+  imageUrl: string | null;
+  videoTime: number | null;
+  onPlay: (seconds: number) => void;
+}) {
+  if (!imageUrl && videoTime === null) return null;
+
+  const label = videoTime !== null ? `▶ ${formatTimer(videoTime)}` : null;
+
+  if (!imageUrl) {
+    return (
+      <button
+        type="button"
+        onClick={() => onPlay(videoTime!)}
+        className="label-mono-sm mt-3 inline-flex items-center gap-1.5 text-ink-soft transition-colors hover:text-ember"
+      >
+        Voir dans la vidéo · {formatTimer(videoTime!)}
+      </button>
+    );
+  }
+
+  const image = (
+    <img
+      src={imageUrl}
+      alt={`Étape ${order}, image de la vidéo`}
+      loading="lazy"
+      className="block aspect-[4/5] w-full object-cover"
+    />
+  );
+
+  if (videoTime === null) {
+    return (
+      <div className="mt-3.5 w-36 overflow-hidden rounded-control border-[1.5px] border-rule-strong sm:w-44">
+        {image}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPlay(videoTime)}
+      aria-label={`Voir l'étape ${order} dans la vidéo, à ${formatTimer(videoTime)}`}
+      className="group relative mt-3.5 block w-36 overflow-hidden rounded-control border-[1.5px] border-rule-strong transition-[transform,box-shadow] duration-200 hover:translate-x-[-1.5px] hover:translate-y-[-1.5px] hover:shadow-press-lift sm:w-44"
+    >
+      {image}
+      <span className="absolute bottom-1.5 left-1.5 rounded-control bg-ink/75 px-2 py-1 font-mono text-[10px] font-medium tracking-[0.12em] text-paper backdrop-blur-sm transition-colors group-hover:bg-ember group-hover:text-ember-ink">
+        {label}
+      </span>
+    </button>
   );
 }

@@ -99,6 +99,12 @@ model Recipe {
   /// Image extraite de la vidéo, utilisée comme illustration de la fiche.
   posterUrl   String?
 
+  /// Illustration des étapes par des images de la vidéo, faite en tâche de
+  /// fond après l'enregistrement : "pending" | "done" | "failed", ou null
+  /// quand elle n'a pas lieu d'être (pas de vidéo, pas de clé Gemini).
+  /// Le client s'en sert pour savoir s'il doit attendre des images.
+  stepFramesStatus String?
+
   servings Int?
   /// true si le nombre de portions a été déduit par l'IA car absent de la source.
   servingsDeduced Boolean @default(false)
@@ -264,6 +270,12 @@ model RecipeStep {
 
   /// true si cette étape, sa durée ou sa température a été déduite par l'IA.
   isDeduced Boolean @default(false)
+
+  /// Instant de la vidéo d'origine où l'étape est montrée, en secondes.
+  /// Permet de relancer la vidéo au bon geste depuis la fiche.
+  videoTime Float?
+  /// Image extraite de la vidéo à cet instant, servie sous /media.
+  imageUrl  String?
 
   recipeId String
   recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)

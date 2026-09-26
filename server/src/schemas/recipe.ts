@@ -111,6 +111,14 @@ export const stepSchema = z.object({
   temperature: z.number().int().min(0).max(500).nullable().default(null),
   /** true si cette étape, sa durée ou sa température a été déduite par l'IA. */
   isDeduced: z.boolean().default(false),
+  /**
+   * Instant de la vidéo d'origine, en secondes, et image extraite à cet
+   * instant. Jamais produits par la génération : renseignés en tâche de fond
+   * après l'enregistrement (voir services/media/stepFrames.ts). Présents ici
+   * pour que le formulaire d'édition les renvoie tels quels.
+   */
+  videoTime: z.number().min(0).max(3600).nullable().default(null),
+  imageUrl: z.string().max(300).nullable().default(null),
 });
 export type RecipeStepInput = z.infer<typeof stepSchema>;
 

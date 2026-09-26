@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, MediaResolution } from '@google/genai';
 import { config } from '../../config.js';
 import { appError } from '../../utils/errors.js';
 import { readVideoBase64, type FetchedVideo } from './videoFetcher.js';
@@ -137,6 +137,122 @@ export async function analyzeVideo(video: FetchedVideo): Promise<VideoAnalysis> 
       detail: error instanceof Error ? error.message : String(error),
       canRetryManually: true,
     });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Repérage des étapes dans la vidéo
+// ---------------------------------------------------------------------------
+
+/**
+ * Le modèle ne voit qu'une image par seconde et n'a pas à lire de texte :
+ * la basse résolution suffit pour reconnaître un geste, et divise par quatre
+ * les tokens consommés par rapport à l'analyse complète.
+ */
+const LOCATE_PROMPT = (steps: string) => `Voici une vidéo de recette et la liste de ses étapes.
+
+Pour CHAQUE étape, indique l'instant de la vidéo (au format MM:SS) où le geste qu'elle décrit est le plus clairement visible à l'écran : les mains en action, l'ingrédient versé, la préparation en cours de cuisson. Évite les instants où l'image est couverte par du texte ou montre le visage de la personne qui parle.
+
+Si une étape n'est pas montrée dans la vidéo (étape déduite, temps de repos, préchauffage non filmé), mets timestamp à null plutôt que de choisir un instant au hasard.
+
+Les instants doivent suivre l'ordre de la vidéo, pas forcément celui de la liste.
+
+ÉTAPES :
+${steps}`;
+
+const LOCATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          order: { type: 'integer' },
+          timestamp: { type: 'string', nullable: true, description: 'MM:SS, ou null.' },
+        },
+        required: ['order', 'timestamp'],
+      },
+    },
+  },
+  required: ['steps'],
+};
+
+/** "1:05", "01:05" ou "0:01:05" → 65. null si illisible. */
+export function parseTimestamp(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const match = /^\s*(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.\d+)?\s*$/.exec(value);
+  if (!match) return null;
+  const [, hours, minutes, seconds] = match;
+  const total = Number(hours ?? 0) * 3600 + Number(minutes) * 60 + Number(seconds);
+  return Number.isFinite(total) ? total : null;
+}
+
+/**
+ * Demande au modèle à quel instant de la vidéo chaque étape est montrée.
+ *
+ * Renvoie une table ordre d'étape → secondes. Une étape absente de la table
+ * n'a pas été repérée : c'est un résultat normal, pas une erreur.
+ */
+export async function locateStepsInVideo(
+  video: Pick<FetchedVideo, 'filePath' | 'mimeType'>,
+  steps: { order: number; instruction: string }[],
+): Promise<Map<number, number>> {
+  if (!isVideoAnalysisConfigured()) {
+    throw appError('AI_UNAVAILABLE', {
+      message: "Le repérage des étapes nécessite une clé Gemini (GEMINI_API_KEY).",
+    });
+  }
+
+  const base64 = await readVideoBase64(video.filePath);
+  const list = steps
+    .map((step) => `${step.order}. ${step.instruction.replace(/<\/?mark>/g, '')}`)
+    .join('\n');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
+
+  try {
+    const response = await getClient().models.generateContent({
+      model: config.ai.gemini.stepsModel,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: video.mimeType, data: base64 } },
+            { text: LOCATE_PROMPT(list) },
+          ],
+        },
+      ],
+      config: {
+        abortSignal: controller.signal,
+        mediaResolution: MediaResolution.MEDIA_RESOLUTION_LOW,
+        responseMimeType: 'application/json',
+        responseSchema: LOCATE_SCHEMA,
+      },
+    });
+
+    const parsed = JSON.parse(response.text ?? '{}') as {
+      steps?: { order?: unknown; timestamp?: unknown }[];
+    };
+
+    const known = new Set(steps.map((step) => step.order));
+    const located = new Map<number, number>();
+
+    for (const item of parsed.steps ?? []) {
+      if (typeof item.order !== 'number' || !known.has(item.order)) continue;
+      const seconds = parseTimestamp(typeof item.timestamp === 'string' ? item.timestamp : null);
+      if (seconds !== null) located.set(item.order, seconds);
+    }
+
+    return located;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw appError('TIMEOUT', { message: 'Le repérage des étapes a pris trop de temps.' });
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
