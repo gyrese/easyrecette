@@ -52,13 +52,21 @@
   --color-danger: #b8321a;
   --color-danger-soft: rgb(184 50 26 / 0.09);
 
-  /* --- Violet IA : ce qui a été déduit / deviné par l'IA ------------- */
+  /* --- Violet IA : entièrement déduit / deviné par l'IA ------------- */
   --color-ai: #6d28d9;
   --color-ai-text: #5b21b6;
   --color-ai-soft: rgb(109 40 217 / 0.10);
   --color-ai-border: rgb(109 40 217 / 0.35);
   --color-ai-dark: #c4b5fd;
   --color-ai-dark-soft: rgb(167 139 250 / 0.20);
+
+  /* --- Orange Vidéo : supposé d'après les gestes dans la vidéo ------- */
+  --color-video: #c2410c;
+  --color-video-text: #9a3412;
+  --color-video-soft: rgb(194 65 12 / 0.10);
+  --color-video-border: rgb(194 65 12 / 0.35);
+  --color-video-dark: #fb923c;
+  --color-video-dark-soft: rgb(251 146 60 / 0.20);
 
   /* --- Typographie ------------------------------------------------------ */
   --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
@@ -501,6 +509,49 @@
     transform: translateX(-140%);
     animation: er-sheen 4.2s ease-in-out infinite;
     pointer-events: none;
+  }
+
+  /* Balises de déduction et suppositions dans les instructions */
+  mark {
+    background: transparent;
+    color: inherit;
+  }
+
+  mark.orange,
+  mark.video {
+    background-color: var(--color-video-soft);
+    color: var(--color-video);
+    font-weight: 500;
+    border-radius: 2px;
+    padding: 0.05em 0.28em;
+    border: 1px solid var(--color-video-border);
+  }
+
+  mark.violet,
+  mark.ai,
+  mark.ai-deduced {
+    background-color: var(--color-ai-soft);
+    color: var(--color-ai);
+    font-weight: 500;
+    border-radius: 2px;
+    padding: 0.05em 0.28em;
+    border: 1px solid var(--color-ai-border);
+  }
+
+  /* Mode cuisine (sombre) */
+  .dark-cook-mode mark.orange,
+  .dark-cook-mode mark.video {
+    background-color: var(--color-video-dark-soft);
+    color: var(--color-video-dark);
+    border-color: rgb(251 146 60 / 0.4);
+  }
+
+  .dark-cook-mode mark.violet,
+  .dark-cook-mode mark.ai,
+  .dark-cook-mode mark.ai-deduced {
+    background-color: var(--color-ai-dark-soft);
+    color: var(--color-ai-dark);
+    border-color: rgb(167 139 250 / 0.4);
   }
 }
 

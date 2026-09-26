@@ -25,6 +25,7 @@ export const RECIPE_JSON_SCHEMA = {
     'description',
     'servings',
     'servingsDeduced',
+    'servingsOrigin',
     'prepTime',
     'cookingTime',
     'totalTime',
@@ -53,6 +54,11 @@ export const RECIPE_JSON_SCHEMA = {
       type: 'boolean',
       description: "true si le nombre de portions a été déduit / estimé par l'IA car absent de la source ; false si précisé.",
     },
+    servingsOrigin: {
+      type: 'string',
+      enum: ['explicit', 'video', 'ai'],
+      description: "'explicit' si le nombre de portions est écrit dans la vidéo ou description ; 'video' si estimé d'après le plat dans la vidéo ; 'ai' si déduit par défaut par l'IA.",
+    },
     prepTime: { ...nullableInteger, description: 'Temps de préparation en minutes, ou null.' },
     cookingTime: { ...nullableInteger, description: 'Temps de cuisson en minutes, ou null.' },
     totalTime: { ...nullableInteger, description: 'Temps total en minutes, ou null.' },
@@ -76,7 +82,16 @@ export const RECIPE_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['quantity', 'unit', 'ingredient', 'preparation', 'note', 'section', 'isDeduced'],
+        required: [
+          'quantity',
+          'unit',
+          'ingredient',
+          'preparation',
+          'note',
+          'section',
+          'isDeduced',
+          'origin',
+        ],
         properties: {
           quantity: {
             ...nullableNumber,
@@ -91,6 +106,11 @@ export const RECIPE_JSON_SCHEMA = {
             type: 'boolean',
             description: "true si la quantité, l'unité ou cet ingrédient a été déduit / estimé par l'IA car absent de la vidéo ou de la source ; false si explicitement mentionné.",
           },
+          origin: {
+            type: 'string',
+            enum: ['explicit', 'video', 'ai'],
+            description: "'explicit' si écrit dans la vidéo ou description (classique) ; 'video' si l'ingrédient ou quantité est supposé d'après les gestes dans la vidéo (orange) ; 'ai' si entièrement déduit par l'IA car absent de la vidéo (violet).",
+          },
         },
       },
     },
@@ -100,19 +120,32 @@ export const RECIPE_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['order', 'title', 'instruction', 'duration', 'temperature', 'isDeduced'],
+        required: [
+          'order',
+          'title',
+          'instruction',
+          'duration',
+          'temperature',
+          'isDeduced',
+          'origin',
+        ],
         properties: {
           order: { type: 'integer', description: "Numéro d'étape, à partir de 1." },
           title: { ...nullableString, description: 'Titre court de l\'étape, ou null.' },
           instruction: {
             type: 'string',
-            description: "Instruction à l'impératif. Si un élément spécifique (durée, température, quantité, précision) a été déduit par l'IA car absent de la vidéo/source, encadre-le impérativement de balises <mark>...</mark> (ex: « Enfourner à <mark>180 °C</mark> pendant <mark>25 minutes</mark> »).",
+            description: "Instruction à l'impératif. Si un passage est supposé d'après la vidéo, encadre-le avec <mark class=\"orange\">...</mark>. Si un passage est entièrement déduit par l'IA (absent de la vidéo), encadre-le avec <mark class=\"violet\">...</mark>.",
           },
           duration: { ...nullableInteger, description: 'Durée de cette étape en minutes, ou null.' },
           temperature: { ...nullableInteger, description: 'Température en °C, ou null.' },
           isDeduced: {
             type: 'boolean',
             description: "true si cette étape, sa durée ou sa température a été déduite / complétée par l'IA car absente de la source.",
+          },
+          origin: {
+            type: 'string',
+            enum: ['explicit', 'video', 'ai'],
+            description: "'explicit' si l'étape est écrite dans la vidéo ou la description (classique) ; 'video' si l'étape est supposée d'après les gestes vus dans la vidéo (orange) ; 'ai' si l'étape est entièrement déduite par l'IA (violet).",
           },
         },
       },

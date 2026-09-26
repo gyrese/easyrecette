@@ -108,6 +108,8 @@ model Recipe {
   servings Int?
   /// true si le nombre de portions a été déduit par l'IA car absent de la source.
   servingsDeduced Boolean @default(false)
+  /// "explicit" (écrit dans la source) | "video" (supposé par la vidéo) | "ai" (entièrement déduit par l'IA)
+  servingsOrigin String @default("explicit")
 
   /// Durées en minutes.
   prepTime    Int?
@@ -241,6 +243,8 @@ model RecipeIngredient {
 
   /// true si la quantité, l'unité ou cet ingrédient a été déduit par l'IA.
   isDeduced Boolean @default(false)
+  /// "explicit" (écrit) | "video" (supposé par les gestes) | "ai" (entièrement déduit)
+  origin String @default("explicit")
 
   position Int @default(0)
 
@@ -270,6 +274,8 @@ model RecipeStep {
 
   /// true si cette étape, sa durée ou sa température a été déduite par l'IA.
   isDeduced Boolean @default(false)
+  /// "explicit" (écrit) | "video" (supposé par les gestes) | "ai" (entièrement déduit)
+  origin String @default("explicit")
 
   /// Instant de la vidéo d'origine où l'étape est montrée, en secondes.
   /// Permet de relancer la vidéo au bon geste depuis la fiche.

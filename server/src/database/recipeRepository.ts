@@ -108,6 +108,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
     description: recipe.description ?? '',
     servings: recipe.servings,
     servingsDeduced: recipe.servingsDeduced,
+    servingsOrigin: (recipe.servingsOrigin ?? (recipe.servingsDeduced ? 'ai' : 'explicit')) as RecipeDto['servingsOrigin'],
     prepTime: recipe.prepTime,
     cookingTime: recipe.cookingTime,
     totalTime: recipe.totalTime,
@@ -128,6 +129,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       note: item.note,
       section: item.section,
       isDeduced: item.isDeduced,
+      origin: (item.origin ?? (item.isDeduced ? 'ai' : 'explicit')) as RecipeDto['ingredients'][number]['origin'],
     })),
 
     steps: recipe.steps.map((step) => ({
@@ -137,6 +139,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       duration: step.duration,
       temperature: step.temperature,
       isDeduced: step.isDeduced,
+      origin: (step.origin ?? (step.isDeduced ? 'ai' : 'explicit')) as RecipeDto['steps'][number]['origin'],
       videoTime: step.videoTime,
       imageUrl: step.imageUrl,
     })),
@@ -223,6 +226,7 @@ export async function createRecipe(
         imageUrl: input.imageUrl,
         servings: input.servings,
         servingsDeduced: input.servingsDeduced ?? false,
+        servingsOrigin: input.servingsOrigin ?? (input.servingsDeduced ? 'ai' : 'explicit'),
         prepTime: input.prepTime,
         cookingTime: input.cookingTime,
         totalTime: input.totalTime,
@@ -245,7 +249,8 @@ export async function createRecipe(
             instruction: step.instruction,
             duration: step.duration,
             temperature: step.temperature,
-            isDeduced: step.isDeduced ?? false,
+            isDeduced: step.isDeduced ?? (step.origin === 'ai' || step.origin === 'video'),
+            origin: step.origin ?? (step.isDeduced ? 'ai' : 'explicit'),
           })),
         },
       },
@@ -265,7 +270,8 @@ export async function createRecipe(
           note: item.note,
           section: item.section,
           position: index,
-          isDeduced: item.isDeduced ?? false,
+          isDeduced: item.isDeduced ?? (item.origin === 'ai' || item.origin === 'video'),
+          origin: item.origin ?? (item.isDeduced ? 'ai' : 'explicit'),
         },
       });
     }
@@ -352,6 +358,7 @@ export async function updateRecipe(
         ...(input.imageUrl !== undefined && { imageUrl: input.imageUrl }),
         ...(input.servings !== undefined && { servings: input.servings }),
         ...(input.servingsDeduced !== undefined && { servingsDeduced: input.servingsDeduced }),
+        ...(input.servingsOrigin !== undefined && { servingsOrigin: input.servingsOrigin }),
         ...(input.prepTime !== undefined && { prepTime: input.prepTime }),
         ...(input.cookingTime !== undefined && { cookingTime: input.cookingTime }),
         ...(input.totalTime !== undefined && { totalTime: input.totalTime }),
@@ -377,7 +384,8 @@ export async function updateRecipe(
             instruction: step.instruction,
             duration: step.duration,
             temperature: step.temperature,
-            isDeduced: step.isDeduced ?? false,
+            isDeduced: step.isDeduced ?? (step.origin === 'ai' || step.origin === 'video'),
+            origin: step.origin ?? (step.isDeduced ? 'ai' : 'explicit'),
             // Repris tels que le client les renvoie, l'image seulement si
             // c'est bien un fichier produit pour cette recette.
             videoTime: step.videoTime,
@@ -403,7 +411,8 @@ export async function updateRecipe(
             note: item.note,
             section: item.section,
             position: index,
-            isDeduced: item.isDeduced ?? false,
+            isDeduced: item.isDeduced ?? (item.origin === 'ai' || item.origin === 'video'),
+            origin: item.origin ?? (item.isDeduced ? 'ai' : 'explicit'),
           },
         });
       }

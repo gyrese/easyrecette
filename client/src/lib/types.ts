@@ -45,6 +45,9 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   manual: 'Saisie manuelle',
 };
 
+export const ORIGINS = ['explicit', 'video', 'ai'] as const;
+export type ItemOrigin = (typeof ORIGINS)[number];
+
 export interface RecipeIngredient {
   quantity: number | null;
   unit: string | null;
@@ -54,6 +57,8 @@ export interface RecipeIngredient {
   section: string | null;
   /** true si déduit ou estimé par l'IA car absent de la source. */
   isDeduced?: boolean;
+  /** 'explicit' = écrit dans la vidéo/description (classique) ; 'video' = gestes vidéo (orange) ; 'ai' = déduit par l'IA (violet) */
+  origin?: ItemOrigin;
 }
 
 export interface RecipeStep {
@@ -64,6 +69,8 @@ export interface RecipeStep {
   temperature: number | null;
   /** true si l'étape, sa durée ou sa température a été déduite par l'IA. */
   isDeduced?: boolean;
+  /** 'explicit' = écrit dans la vidéo/description (classique) ; 'video' = gestes vidéo (orange) ; 'ai' = déduit par l'IA (violet) */
+  origin?: ItemOrigin;
   /** Instant de la vidéo d'origine où l'étape est montrée, en secondes. */
   videoTime?: number | null;
   /** Image extraite de la vidéo à cet instant. */
@@ -83,6 +90,7 @@ export interface GeneratedRecipe {
   description: string;
   servings: number | null;
   servingsDeduced?: boolean;
+  servingsOrigin?: ItemOrigin;
   prepTime: number | null;
   cookingTime: number | null;
   totalTime: number | null;

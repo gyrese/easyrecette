@@ -119,6 +119,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
     description: schema.description ?? '',
     servings,
     servingsDeduced: false,
+    servingsOrigin: 'explicit' as const,
     prepTime,
     cookingTime,
     totalTime,
@@ -135,6 +136,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
       note: item.note,
       section: null,
       isDeduced: false,
+      origin: 'explicit' as const,
     })),
 
     steps: parsedSteps.map((step, index) => ({
@@ -144,6 +146,7 @@ export function recipeFromSchemaOrg(content: ExtractedContent): GeneratedRecipe 
       duration: null,
       temperature: null,
       isDeduced: false,
+      origin: 'explicit' as const,
     })),
 
     equipment: [],

@@ -82,6 +82,9 @@ function cappedList(maxItems: number, maxLength: number) {
     );
 }
 
+export const ORIGINS = ['explicit', 'video', 'ai'] as const;
+export type ItemOrigin = (typeof ORIGINS)[number];
+
 export const ingredientSchema = z.object({
   /** null = quantité non précisée. */
   quantity: z.number().positive().max(100_000).nullable(),
@@ -97,6 +100,8 @@ export const ingredientSchema = z.object({
   section: z.string().trim().max(80).nullable().default(null),
   /** true si la quantité, l'unité ou cet ingrédient a été déduit par l'IA. */
   isDeduced: z.boolean().default(false),
+  /** "explicit" (écrit) | "video" (supposé par la vidéo) | "ai" (entièrement déduit) */
+  origin: z.enum(ORIGINS).default('explicit'),
 });
 export type RecipeIngredientInput = z.infer<typeof ingredientSchema>;
 
@@ -111,6 +116,8 @@ export const stepSchema = z.object({
   temperature: z.number().int().min(0).max(500).nullable().default(null),
   /** true si cette étape, sa durée ou sa température a été déduite par l'IA. */
   isDeduced: z.boolean().default(false),
+  /** "explicit" (écrit) | "video" (supposé par la vidéo) | "ai" (entièrement déduit) */
+  origin: z.enum(ORIGINS).default('explicit'),
   /**
    * Instant de la vidéo d'origine, en secondes, et image extraite à cet
    * instant. Jamais produits par la génération : renseignés en tâche de fond
@@ -157,6 +164,7 @@ export const generatedRecipeSchema = z.object({
 
   servings: z.number().int().min(1).max(100).nullable().default(null),
   servingsDeduced: z.boolean().default(false),
+  servingsOrigin: z.enum(ORIGINS).default('explicit'),
 
   prepTime: minutes.nullable().default(null),
   cookingTime: minutes.nullable().default(null),

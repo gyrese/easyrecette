@@ -4,6 +4,7 @@ import {
   CATEGORY_LABELS,
   DIFFICULTIES,
   type GeneratedRecipe,
+  type ItemOrigin,
   type RecipeIngredient,
   type RecipeStep,
 } from '../lib/types';
@@ -66,6 +67,7 @@ export function RecipeEditor({ recipe, onChange }: Props) {
           preparation: null,
           note: null,
           isDeduced: false,
+          origin: 'explicit',
           // Nouvelle ligne dans la même section que la précédente : c'est
           // presque toujours ce qu'on veut en ajoutant à la suite.
           section: recipe.ingredients.at(-1)?.section ?? null,
@@ -94,6 +96,7 @@ export function RecipeEditor({ recipe, onChange }: Props) {
           duration: null,
           temperature: null,
           isDeduced: false,
+          origin: 'explicit',
         },
       ],
     });
@@ -315,18 +318,38 @@ export function RecipeEditor({ recipe, onChange }: Props) {
                   {item.note ? (
                     <p className="px-1 text-xs text-amber-warn">{item.note}</p>
                   ) : <div />}
-                  <button
-                    type="button"
-                    onClick={() => setIngredient(index, { isDeduced: !item.isDeduced })}
-                    className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${
-                      item.isDeduced
-                        ? 'border-[#6d28d9]/50 bg-[rgb(109_40_217/0.1)] text-[#5b21b6] font-medium'
-                        : 'border-rule text-ink/40 hover:text-ink'
-                    }`}
-                    title="Cliquer pour changer le statut déduit par l'IA"
-                  >
-                    <span>✨</span> {item.isDeduced ? "Déduit par l'IA" : 'Manuel'}
-                  </button>
+                  {(() => {
+                    const curOrigin: ItemOrigin = item.origin ?? (item.isDeduced ? 'ai' : 'explicit');
+                    const nextMap: Record<ItemOrigin, ItemOrigin> = {
+                      explicit: 'video',
+                      video: 'ai',
+                      ai: 'explicit',
+                    };
+                    const labels: Record<ItemOrigin, string> = {
+                      explicit: 'Source écrite',
+                      video: 'Supposé vidéo (orange)',
+                      ai: 'Déduit IA (violet)',
+                    };
+                    const styles: Record<ItemOrigin, string> = {
+                      explicit: 'border-rule text-ink/40 hover:text-ink',
+                      video: 'border-[#c2410c]/50 bg-[#c2410c]/10 text-[#c2410c] font-medium',
+                      ai: 'border-[#6d28d9]/50 bg-[#6d28d9]/10 text-[#6d28d9] font-medium',
+                    };
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = nextMap[curOrigin];
+                          setIngredient(index, { origin: next, isDeduced: next !== 'explicit' });
+                        }}
+                        className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${styles[curOrigin]}`}
+                        title="Cliquer pour changer l'origine (écrit / vidéo / IA)"
+                      >
+                        {labels[curOrigin]}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -441,18 +464,38 @@ export function RecipeEditor({ recipe, onChange }: Props) {
               </div>
 
               <div className="mt-2.5 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setStep(index, { isDeduced: !step.isDeduced })}
-                  className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${
-                    step.isDeduced
-                      ? 'border-[#6d28d9]/50 bg-[rgb(109_40_217/0.1)] text-[#5b21b6] font-medium'
-                      : 'border-rule text-ink/40 hover:text-ink'
-                  }`}
-                  title="Cliquer pour changer le statut déduit par l'IA"
-                >
-                  <span>✨</span> {step.isDeduced ? "Étape déduite par l'IA" : 'Étape manuelle'}
-                </button>
+                {(() => {
+                  const curOrigin: ItemOrigin = step.origin ?? (step.isDeduced ? 'ai' : 'explicit');
+                  const nextMap: Record<ItemOrigin, ItemOrigin> = {
+                    explicit: 'video',
+                    video: 'ai',
+                    ai: 'explicit',
+                  };
+                  const labels: Record<ItemOrigin, string> = {
+                    explicit: 'Source écrite',
+                    video: 'Supposé vidéo (orange)',
+                    ai: 'Déduit IA (violet)',
+                  };
+                  const styles: Record<ItemOrigin, string> = {
+                    explicit: 'border-rule text-ink/40 hover:text-ink',
+                    video: 'border-[#c2410c]/50 bg-[#c2410c]/10 text-[#c2410c] font-medium',
+                    ai: 'border-[#6d28d9]/50 bg-[#6d28d9]/10 text-[#6d28d9] font-medium',
+                  };
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = nextMap[curOrigin];
+                        setStep(index, { origin: next, isDeduced: next !== 'explicit' });
+                      }}
+                      className={`label-mono-sm inline-flex items-center gap-1 rounded-control border px-2 py-0.5 text-[9.5px] transition-colors ${styles[curOrigin]}`}
+                      title="Cliquer pour changer l'origine (écrit / vidéo / IA)"
+                    >
+                      {labels[curOrigin]}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           ))}
