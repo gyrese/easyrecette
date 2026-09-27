@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import type { Prisma } from '@prisma/client';
 import { prisma } from './client.js';
 import {
@@ -16,9 +17,11 @@ import {
   deleteRecipeMedia,
   deleteUserPhoto,
   isStepImageOf,
+  recipeMediaPath,
   saveUserPhoto,
 } from '../services/media/storage.js';
 import { canIllustrateSteps, scheduleStepFrames } from '../services/media/stepFrames.js';
+import { scheduleMediaOptimization } from '../services/media/optimize.js';
 import { publicAuthorName } from '../services/auth/accounts.js';
 
 /**
@@ -335,7 +338,10 @@ export async function createRecipe(
       data: { stepFramesStatus: 'pending' },
       include: recipeInclude,
     });
+    // La vidéo sera recompressée à la suite, une fois les images tirées.
     scheduleStepFrames(recipe.id);
+  } else if (saved.videoUrl) {
+    scheduleMediaOptimization(recipe.id);
   }
 
   return toDto(saved, userId);
@@ -387,10 +393,10 @@ export async function updateRecipe(
             isDeduced: step.isDeduced ?? (step.origin === 'ai' || step.origin === 'video'),
             origin: step.origin ?? (step.isDeduced ? 'ai' : 'explicit'),
             // Repris tels que le client les renvoie, l'image seulement si
-            // c'est bien un fichier produit pour cette recette.
+            // c'est bien un fichier produit pour cette recette, et qu'il existe
+            // encore (une conversion en WebP a pu le remplacer entre-temps).
             videoTime: step.videoTime,
-            imageUrl:
-              step.imageUrl && isStepImageOf(recipeId, step.imageUrl) ? step.imageUrl : null,
+            imageUrl: isExistingStepImage(recipeId, step.imageUrl) ? step.imageUrl : null,
           },
         });
       }
@@ -430,6 +436,12 @@ export async function updateRecipe(
   });
 
   return toDto(recipe, userId);
+}
+
+function isExistingStepImage(recipeId: string, url: string | null): url is string {
+  if (!url || !isStepImageOf(recipeId, url)) return false;
+  const filePath = recipeMediaPath(recipeId, url);
+  return Boolean(filePath && existsSync(filePath));
 }
 
 export async function getRecipe(userId: string, recipeId: string): Promise<RecipeDto | null> {

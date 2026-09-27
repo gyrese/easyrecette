@@ -10,6 +10,7 @@ import { router } from './routes/index.js';
 import { cleanExpiredSessions } from './services/auth/session.js';
 import { cleanTempMedia, MEDIA_ROOT } from './services/media/storage.js';
 import { resumePendingStepFrames } from './services/media/stepFrames.js';
+import { optimizeExistingMedia } from './services/media/optimize.js';
 import { isAiConfigured } from './services/recipeAI/index.js';
 
 const app = express();
@@ -98,6 +99,11 @@ async function start(): Promise<void> {
   // Les illustrations d'étapes interrompues par l'arrêt reprennent en fond.
   const resumed = await resumePendingStepFrames();
   if (resumed > 0) console.log(`  ${resumed} illustration(s) d'étapes reprise(s)`);
+
+  // Médias enregistrés avant la conversion en WebP : rattrapés en fond, une
+  // fiche à la fois, sans retarder le démarrage.
+  const toOptimize = await optimizeExistingMedia();
+  if (toOptimize > 0) console.log(`  ${toOptimize} fiche(s) aux médias à optimiser`);
 
   const server = app.listen(config.port, () => {
     console.log(`\n  CookBook API  →  http://localhost:${config.port}/api`);

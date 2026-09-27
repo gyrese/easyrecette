@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { prisma } from '../../database/client.js';
 import { isAppError } from '../../utils/errors.js';
+import { enqueueMediaTask } from './mediaQueue.js';
+import { scheduleMediaOptimization } from './optimize.js';
 import { isVideoAnalysisConfigured, locateStepsInVideo } from './videoAnalyzer.js';
 import { downloadVideo, isVideoAnalysisAvailable } from './videoFetcher.js';
 import {
@@ -26,15 +28,12 @@ import {
  * n'a pas à les attendre pour consulter sa fiche. Le client sait qu'il doit
  * patienter grâce à `stepFramesStatus`, et recharge la fiche en attendant.
  *
- * Les tâches passent une par une : un serveur mono-utilisateur n'a pas à
- * lancer trois ffmpeg et trois envois de vidéo de front parce qu'on a
- * importé trois recettes d'affilée.
+ * Les tâches passent par la file média commune (voir mediaQueue.ts), une à
+ * la fois. Une fois les images extraites, la vidéo est recompressée : les
+ * images sont tirées de l'original, en meilleure qualité.
  */
 
 const VIDEO_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'youtube'];
-
-const queue: string[] = [];
-let running = false;
 
 /**
  * Indique si l'illustration peut être tentée pour cette recette.
@@ -58,8 +57,10 @@ export function canIllustrateSteps(recipe: {
 
 /** Met la recette en file. Le statut doit déjà valoir "pending". */
 export function scheduleStepFrames(recipeId: string): void {
-  if (!queue.includes(recipeId)) queue.push(recipeId);
-  void drain();
+  enqueueMediaTask(`step-frames:${recipeId}`, async () => {
+    await illustrate(recipeId);
+    scheduleMediaOptimization(recipeId);
+  });
 }
 
 /**
@@ -73,19 +74,6 @@ export async function resumePendingStepFrames(): Promise<number> {
   });
   for (const { id } of pending) scheduleStepFrames(id);
   return pending.length;
-}
-
-async function drain(): Promise<void> {
-  if (running) return;
-  running = true;
-  try {
-    while (queue.length > 0) {
-      const recipeId = queue.shift()!;
-      await illustrate(recipeId);
-    }
-  } finally {
-    running = false;
-  }
 }
 
 async function illustrate(recipeId: string): Promise<void> {
@@ -125,16 +113,20 @@ async function illustrateSteps(recipeId: string): Promise<'done' | 'failed'> {
 
     // L'instant est dans le nom du fichier : les médias sont servis avec un
     // cache « immutable », une nouvelle image doit avoir une nouvelle adresse.
-    const fileName = `step-${step.order}-${Math.round(seconds * 10)}.jpg`;
-    const ok = await extractFrame(video.filePath, seconds, path.join(dir, fileName));
+    const fileName = await extractFrame(
+      video.filePath,
+      seconds,
+      dir,
+      `step-${step.order}-${Math.round(seconds * 10)}`,
+    );
 
     // L'instant est gardé même sans image : il suffit à relancer la vidéo au
     // bon moment depuis la fiche.
     await prisma.recipeStep.updateMany({
       where: { id: step.id },
-      data: { videoTime: seconds, imageUrl: ok ? recipeMediaUrl(recipeId, fileName) : null },
+      data: { videoTime: seconds, imageUrl: fileName ? recipeMediaUrl(recipeId, fileName) : null },
     });
-    if (ok) illustrated++;
+    if (fileName) illustrated++;
   }
 
   console.log(

@@ -76,7 +76,7 @@ export async function attachVideoToRecipe(
 
   await rm(from, { recursive: true, force: true });
 
-  return { videoUrl: `/media/recipes/${sanitize(recipeId)}/${videoName}`, posterUrl };
+  return { videoUrl: recipeMediaUrl(recipeId, videoName), posterUrl };
 }
 
 /**
@@ -93,43 +93,25 @@ export async function extractPoster(
   targetDir: string,
   recipeId: string,
 ): Promise<string | null> {
-  const ok = await extractFrame(videoPath, 1, path.join(targetDir, 'poster.jpg'));
-  return ok ? `/media/recipes/${sanitize(recipeId)}/poster.jpg` : null;
+  const fileName = await extractFrame(videoPath, 1, targetDir, 'poster');
+  return fileName ? recipeMediaUrl(recipeId, fileName) : null;
 }
 
 /**
- * Écrit dans `outputPath` l'image de la vidéo à l'instant `seconds`.
+ * Lance ffmpeg et renvoie true s'il a réussi.
  *
- * Renvoie false sans lever d'erreur quand ffmpeg est absent, échoue, ou que
- * l'instant dépasse la fin de la vidéo (ffmpeg n'écrit alors rien) : une
- * image manquante n'est jamais une raison de faire échouer l'appelant.
+ * Jamais d'exception : ffmpeg absent, en échec ou trop lent donnent false,
+ * et chaque appelant garde alors ce qu'il avait. Un média non optimisé
+ * n'est jamais une raison de faire échouer une recette.
  */
-export async function extractFrame(
-  videoPath: string,
-  seconds: number,
-  outputPath: string,
-): Promise<boolean> {
-  const ok = await new Promise<boolean>((resolve) => {
-    const child = spawn(
-      'ffmpeg',
-      [
-        '-y',
-        // `-ss` avant `-i` : recherche rapide sur l'image clé, puis décodage
-        // exact jusqu'à l'instant voulu.
-        '-ss', seconds.toFixed(2),
-        '-i', videoPath,
-        '-frames:v', '1',
-        '-vf', 'scale=800:-1',
-        '-q:v', '4',
-        outputPath,
-      ],
-      { windowsHide: true },
-    );
+function runFfmpeg(args: string[], timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn('ffmpeg', ['-y', '-v', 'error', ...args], { windowsHide: true });
 
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
       resolve(false);
-    }, 20_000);
+    }, timeoutMs);
 
     child.on('error', () => {
       clearTimeout(timer);
@@ -140,16 +122,115 @@ export async function extractFrame(
       resolve(code === 0);
     });
   });
+}
 
-  if (!ok || !existsSync(outputPath)) return false;
+/** Vrai si ffmpeg a produit un fichier non vide ; sinon l'efface. */
+async function produced(filePath: string): Promise<boolean> {
+  if (!existsSync(filePath)) return false;
+  if ((await stat(filePath)).size > 0) return true;
+  await rm(filePath, { force: true });
+  return false;
+}
 
-  const stats = await stat(outputPath);
-  if (stats.size === 0) {
-    await rm(outputPath, { force: true });
-    return false;
+/**
+ * Réglages WebP communs. Qualité 75 : à l'œil, identique au JPEG d'avant
+ * sur une photo de cuisine, pour 30 à 50 % de poids en moins.
+ */
+const WEBP_ARGS = ['-c:v', 'libwebp', '-quality', '75', '-compression_level', '4'];
+
+/**
+ * Écrit dans `dir` l'image de la vidéo à l'instant `seconds`, en WebP, et
+ * renvoie le nom du fichier écrit (`<baseName>.webp`), ou null.
+ *
+ * Repli en JPEG si l'encodeur WebP manque à ce ffmpeg-là : mieux vaut une
+ * image un peu plus lourde que pas d'image du tout.
+ *
+ * Null aussi quand l'instant dépasse la fin de la vidéo : ffmpeg n'écrit
+ * alors rien, sans signaler d'erreur.
+ */
+export async function extractFrame(
+  videoPath: string,
+  seconds: number,
+  dir: string,
+  baseName: string,
+): Promise<string | null> {
+  const input = [
+    // `-ss` avant `-i` : recherche rapide sur l'image clé, puis décodage
+    // exact jusqu'à l'instant voulu.
+    '-ss', seconds.toFixed(2),
+    '-i', videoPath,
+    '-frames:v', '1',
+    // Réduite à 800 px de large, jamais agrandie : une vidéo verticale en
+    // 480p n'en fait que 270, l'agrandir alourdirait sans rien montrer de plus.
+    '-vf', "scale='min(800,iw)':-2",
+  ];
+
+  const webp = `${baseName}.webp`;
+  if (
+    (await runFfmpeg([...input, ...WEBP_ARGS, path.join(dir, webp)], 20_000)) &&
+    (await produced(path.join(dir, webp)))
+  ) {
+    return webp;
   }
 
-  return true;
+  const jpg = `${baseName}.jpg`;
+  if (
+    (await runFfmpeg([...input, '-q:v', '4', path.join(dir, jpg)], 20_000)) &&
+    (await produced(path.join(dir, jpg)))
+  ) {
+    return jpg;
+  }
+
+  return null;
+}
+
+/**
+ * Convertit une image (JPEG, PNG, WebP…) en WebP, côté le plus long ramené
+ * à `maxSide` pixels sans jamais agrandir. Renvoie true si `outputPath` a
+ * été écrit.
+ */
+export async function convertImageToWebp(
+  inputPath: string,
+  outputPath: string,
+  maxSide = 1600,
+): Promise<boolean> {
+  const scale =
+    `scale='if(gt(iw,ih),min(${maxSide},iw),-2)':'if(gt(iw,ih),-2,min(${maxSide},ih))'`;
+  const ok = await runFfmpeg(
+    ['-i', inputPath, '-frames:v', '1', '-vf', scale, ...WEBP_ARGS, outputPath],
+    30_000,
+  );
+  return ok && (await produced(outputPath));
+}
+
+/**
+ * Recompresse une vidéo pour le stockage.
+ *
+ * MP4 H.264 et non WebM ou AV1 : c'est le seul format que tous les
+ * navigateurs lisent, Safari sur iPhone compris. Le gain vient des réglages :
+ *  - CRF 28 : la qualité baisse à peine sur un geste de cuisine filmé au
+ *    téléphone, le poids est souvent divisé par deux ou trois ;
+ *  - petit côté ramené à 480 px, comme au téléchargement ;
+ *  - son en AAC 64 kb/s, largement assez pour une voix off ;
+ *  - `faststart` : l'index en tête de fichier, pour que la lecture et le
+ *    saut à un instant (images des étapes) démarrent sans tout télécharger.
+ */
+export async function compressVideo(inputPath: string, outputPath: string): Promise<boolean> {
+  const scale =
+    "scale='if(gt(iw,ih),-2,min(480,iw))':'if(gt(iw,ih),min(480,ih),-2)'";
+  const ok = await runFfmpeg(
+    [
+      '-i', inputPath,
+      '-vf', scale,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '64k', '-ac', '2',
+      '-movflags', '+faststart',
+      outputPath,
+    ],
+    // Quelques secondes pour une vidéo de recette ; large pour un VPS modeste.
+    5 * 60_000,
+  );
+  return ok && (await produced(outputPath));
 }
 
 /** Adresse publique d'un fichier du dossier d'une recette. */
@@ -175,7 +256,9 @@ export function recipeMediaPath(recipeId: string, url: string): string | null {
  */
 export function isStepImageOf(recipeId: string, url: string): boolean {
   const prefix = recipeMediaUrl(recipeId, '');
-  return url.startsWith(prefix) && /^step-\d+-\d+\.jpg$/.test(url.slice(prefix.length));
+  return (
+    url.startsWith(prefix) && /^step-\d+-\d+\.(webp|jpg)$/.test(url.slice(prefix.length))
+  );
 }
 
 /**
@@ -220,8 +303,22 @@ export async function saveUserPhoto(
   const dir = recipeDirFor(recipeId);
   await mkdir(dir, { recursive: true });
 
-  const name = `photo-${Date.now()}.${extension}`;
-  await writeFile(path.join(dir, name), buffer);
+  // Une photo de téléphone pèse 3 à 8 Mo en JPEG ou PNG ; en WebP réduite à
+  // 1600 px, quelques centaines de Ko. L'original n'est gardé que si la
+  // conversion échoue (ffmpeg absent, format exotique).
+  const stamp = Date.now();
+  const original = `photo-${stamp}.${extension}`;
+  await writeFile(path.join(dir, original), buffer);
+
+  let name = original;
+  const webp = `photo-${stamp}.webp`;
+  if (
+    webp !== original &&
+    (await convertImageToWebp(path.join(dir, original), path.join(dir, webp)))
+  ) {
+    await rm(path.join(dir, original), { force: true });
+    name = webp;
+  }
 
   await removeOtherPhotos(dir, name);
 
