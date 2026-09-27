@@ -9,7 +9,7 @@ import {
 } from '../lib/format';
 import type { Recipe } from '../lib/types';
 import { PLATFORM_LABELS, RATING_LABELS } from '../lib/types';
-import { IconCheck, IconClose, IconCopy, IconGlobe, IconHeart, IconTrash } from './Icons';
+import { IconCheck, IconClose, IconCopy, IconEdit, IconGlobe, IconHeart, IconTrash } from './Icons';
 import { Stars } from './RecipeRating';
 import { RecipeImage, Spinner } from './ui';
 
@@ -170,11 +170,12 @@ export function RecipeCard({
       </Link>
 
       {/* --- Contrôles superposés ---
-          `focus-within` en plus du survol : sans lui, la poubelle et le cœur
-          resteraient invisibles à la tabulation. Un bouton qu'on peut activer
-          sans le voir est un bouton qu'on active par accident — a fortiori
-          celui qui supprime. */}
-      <div className="absolute top-2.5 left-2.5 z-10 flex gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-pressed=true]]:opacity-100">
+          `focus-within` en plus du survol : sans lui, la poubelle, l'édition
+          et le cœur resteraient invisibles à la tabulation. Un bouton qu'on
+          peut activer sans le voir est un bouton qu'on active par accident —
+          a fortiori celui qui supprime. Sur mobile (tactile), les boutons
+          restent légèrement visibles pour pouvoir être touchés sans survol. */}
+      <div className="absolute top-2.5 left-2.5 z-10 flex gap-1.5 opacity-90 sm:opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 has-[[aria-pressed=true]]:opacity-100">
         {onToggleFavorite && (
           <button
             type="button"
@@ -217,6 +218,19 @@ export function RecipeCard({
           >
             <IconCheck />
           </button>
+        )}
+
+        {/* Bouton pour modifier la fiche directement depuis la carte */}
+        {recipe.isOwner && (
+          <Link
+            to={`/recipe/${recipe.id}/edit`}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`Modifier ${recipe.title}`}
+            title="Modifier la recette"
+            className="grid size-9 place-items-center rounded-full bg-paper/90 text-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-lime hover:text-ink"
+          >
+            <IconEdit />
+          </Link>
         )}
 
         {/* La poubelle ferme la barre, séparée du reste : c'est la seule
