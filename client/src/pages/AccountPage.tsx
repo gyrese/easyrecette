@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconGlobe, IconLock, IconLogout, IconTrash } from '../components/Icons';
+import { PetAvatar } from '../components/PetAvatar';
 import { Button, ErrorPanel, FadeIn, Input, Label, SectionHead } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { PET_AVATARS, getPetAvatar } from '../lib/pets';
 
 /**
  * Page compte.
@@ -19,11 +21,12 @@ import { useAuth } from '../lib/auth';
  */
 export function AccountPage() {
   const navigate = useNavigate();
-  const { user, authorName, setDisplayName, logout, changePassword } = useAuth();
+  const { user, authorName, setDisplayName, setAvatarPet, logout, changePassword } = useAuth();
 
   const [name, setName] = useState(user?.displayName ?? '');
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export function AccountPage() {
   // La garde de route ne rend cette page qu'à un utilisateur connecté ; ce
   // garde-fou couvre l'instant entre une déconnexion et la redirection.
   if (!user) return null;
+  const selectedPet = getPetAvatar(user.avatarPet);
 
   async function saveName() {
     setSavingName(true);
@@ -53,6 +57,19 @@ export function AccountPage() {
       setError(err instanceof ApiError ? err.message : "Le nom n'a pas pu être enregistré.");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function chooseAvatar(pet: string | null) {
+    if (pet === user?.avatarPet) return;
+    setSavingAvatar(pet ?? 'account');
+    setError(null);
+    try {
+      await setAvatarPet(pet);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "L'avatar n'a pas pu être enregistré.");
+    } finally {
+      setSavingAvatar(null);
     }
   }
 
@@ -115,17 +132,12 @@ export function AccountPage() {
       {/* ---------------- Identité ---------------- */}
       <section className="surface mt-7 p-6">
         <div className="flex items-center gap-4">
-          {user.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt=""
-              className="size-14 shrink-0 rounded-full border-[1.5px] border-rule-strong object-cover"
-            />
-          ) : (
-            <span className="grid size-14 shrink-0 place-items-center rounded-full border-[1.5px] border-rule-strong font-display text-2xl text-ink">
-              {authorName.slice(0, 1).toUpperCase()}
-            </span>
-          )}
+          <PetAvatar
+            avatarPet={user.avatarPet}
+            avatarUrl={user.avatarUrl}
+            name={authorName}
+            className="size-14 text-[56px]"
+          />
 
           <div className="min-w-0">
             <p className="truncate font-display text-[22px] leading-tight text-ink">
@@ -137,9 +149,85 @@ export function AccountPage() {
 
         <p className="mt-5 border-t-[1.5px] border-rule pt-4 text-[13px] leading-[1.6] text-ink-faint">
           {user.hasGoogle
-            ? 'Ton nom, ta photo et ton adresse viennent de Google et se mettent à jour à chaque connexion. Pour les changer, modifie-les dans ton compte Google.'
+            ? 'Ton nom, ta photo et ton adresse viennent de Google et se mettent à jour à chaque connexion. Choisir un Pet masque ta photo sans la supprimer.'
             : "Ton adresse sert d'identifiant de connexion. Elle n'est jamais affichée aux autres utilisateurs."}
         </p>
+      </section>
+
+      {/* ---------------- Avatar Pet ---------------- */}
+      <section className="surface mt-6 p-6">
+        <Label as="h2" className="text-ink">
+          Avatar Pet
+        </Label>
+        <p className="mt-2.5 text-[14px] leading-[1.58] text-ink-soft">
+          Choisis un petit compagnon de cuisine. Il apparaîtra aussi à côté des recettes que tu
+          partages.
+        </p>
+
+        <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-6">
+          <button
+            type="button"
+            aria-pressed={user.avatarPet === null}
+            disabled={savingAvatar !== null}
+            onClick={() => void chooseAvatar(null)}
+            className={`press flex min-h-28 flex-col items-center justify-center gap-2 rounded-control border-[1.5px] p-2.5 text-center transition-colors ${
+              user.avatarPet === null
+                ? 'border-rule-strong bg-lime'
+                : 'border-rule bg-paper hover:border-rule-strong'
+            }`}
+          >
+            <PetAvatar
+              avatarPet={null}
+              avatarUrl={user.avatarUrl}
+              name={authorName}
+              className="size-14 text-[52px]"
+            />
+            <span className="font-mono text-[9px] font-medium tracking-[0.12em] uppercase">
+              {user.avatarUrl ? 'Photo du compte' : 'Mon initiale'}
+            </span>
+          </button>
+
+          {PET_AVATARS.map((pet) => (
+            <button
+              key={pet.id}
+              type="button"
+              aria-label={`Choisir ${pet.name} comme avatar`}
+              aria-pressed={user.avatarPet === pet.id}
+              disabled={savingAvatar !== null}
+              onClick={() => void chooseAvatar(pet.id)}
+              className={`press flex min-h-28 flex-col items-center justify-center gap-2 rounded-control border-[1.5px] p-2.5 text-center transition-colors ${
+                user.avatarPet === pet.id
+                  ? 'border-rule-strong bg-lime'
+                  : 'border-rule bg-paper hover:border-rule-strong'
+              }`}
+            >
+              <img src={pet.src} alt="" loading="lazy" className="size-14 object-contain" />
+              <span className="font-mono text-[9px] font-medium leading-tight tracking-[0.1em] uppercase">
+                {pet.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {savingAvatar && (
+          <p className="mt-3 label-mono-sm text-ember" aria-live="polite">
+            Enregistrement…
+          </p>
+        )}
+
+        {selectedPet && (
+          <p className="mt-3 text-[12px] text-ink-faint">
+            Pet créé par {selectedPet.creator} ·{' '}
+            <a
+              href={selectedPet.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              Voir sur Petdex
+            </a>
+          </p>
+        )}
       </section>
 
       {/* ---------------- Nom d'auteur ---------------- */}

@@ -174,30 +174,98 @@ export async function logoutEverywhere(req: Request, res: Response): Promise<voi
   res.json({ sessions: count });
 }
 
+/**
+ * Avatars Pets proposés (client/src/lib/pets.ts). Liste fermée : le client
+ * ne peut pas injecter une URL d'image, seulement choisir parmi ces noms.
+ */
+const PET_AVATAR_IDS = [
+  'boba',
+  'carrot-bun',
+  'croissant-cat',
+  'hei-mao-chef',
+  'milk-tea-koala',
+  'sleepy-croissant',
+  'bubble-tea',
+  'bun',
+  'chefito',
+  'sous-chef',
+  'chef',
+  'bagel',
+  'banana',
+  'banana-cat',
+  'biscuit',
+  'boba-axolotl',
+  'butter-bear',
+  'cheese',
+  'cheese-bear',
+  'cherry',
+  'chick-peach',
+  'chika-matcha',
+  'cookie-ann',
+  'cream-cat',
+  'cream-puff',
+  'cupcake-caticorn',
+  'devil-burger',
+  'honeybee',
+  'ice-cream-cat',
+  'jack-pepper',
+  'lemon',
+  'melon-star',
+  'milk-tea-mouse',
+  'mochi',
+  'milk-mochi',
+  'peach',
+  'potato',
+  'pudding',
+  'robocarrot',
+  'soda',
+  'steamling',
+  'strawberry',
+  'tarty',
+  'curry-dog',
+  'mushrooms',
+  'acorn-squirrel',
+  'apple',
+  'blueberry',
+  'choco',
+  'cocoa',
+] as const;
+
 const profileSchema = z.object({
   /**
    * Nom d'auteur affiché sur les recettes publiques. Chaîne vide = revenir au
    * nom du compte.
    */
-  displayName: z.string().trim().max(60).nullable(),
-});
+  displayName: z.string().trim().max(60).nullable().optional(),
+  /** Identifiants fermés : le client ne peut pas injecter une URL d'image. */
+  avatarPet: z
+    .enum(PET_AVATAR_IDS)
+    .nullable()
+    .optional(),
+}).refine((data) => data.displayName !== undefined || data.avatarPet !== undefined);
 
 export async function updateProfile(req: Request, res: Response): Promise<void> {
   const user = currentUser(req);
   const parsed = profileSchema.safeParse(req.body);
 
   if (!parsed.success) {
+    const avatarInvalid = parsed.error.issues.some((issue) => issue.path[0] === 'avatarPet');
     throw appError('INVALID_INPUT', {
-      message: 'Ce nom d’auteur est trop long (60 caractères maximum).',
+      message: avatarInvalid
+        ? "Ce Pet n'est pas disponible. Choisis-en un dans la liste."
+        : 'Ce nom d’auteur est trop long (60 caractères maximum).',
       status: 422,
     });
   }
 
-  const displayName = parsed.data.displayName?.trim() || null;
-
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { displayName },
+    data: {
+      ...(parsed.data.displayName !== undefined
+        ? { displayName: parsed.data.displayName?.trim() || null }
+        : {}),
+      ...(parsed.data.avatarPet !== undefined ? { avatarPet: parsed.data.avatarPet } : {}),
+    },
   });
 
   res.json({ user: toSessionUser(updated) });

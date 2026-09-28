@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { IconLogout, IconUser } from './Icons';
+import { PetAvatar } from './PetAvatar';
 import { Label, Spinner } from './ui';
 
 /**
@@ -86,13 +87,12 @@ export function AccountMenu() {
         aria-label={`Compte de ${authorName}`}
         className="grid size-11 place-items-center overflow-hidden rounded-full border-[1.5px] border-rule-strong bg-paper-raised text-ink transition-colors hover:bg-lime"
       >
-        {user.avatarUrl ? (
-          <img src={user.avatarUrl} alt="" className="size-full object-cover" />
-        ) : (
-          <span className="font-display text-[17px] leading-none">
-            {authorName.slice(0, 1).toUpperCase()}
-          </span>
-        )}
+        <PetAvatar
+          avatarPet={user.avatarPet}
+          avatarUrl={user.avatarUrl}
+          name={authorName}
+          className="size-full border-0 text-[40px]"
+        />
       </button>
 
       {open && (

@@ -38,6 +38,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Met à jour le nom d'auteur, localement et côté serveur. */
   setDisplayName: (name: string | null) => Promise<void>;
+  /** Choisit un Pet culinaire, ou revient à la photo de compte. */
+  setAvatarPet: (pet: string | null) => Promise<void>;
   /** Connexion par e-mail. Lève une ApiError au message affichable si elle échoue. */
   loginWithPassword: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string | null) => Promise<void>;
@@ -81,7 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setDisplayName = useCallback(async (name: string | null) => {
-    const { user: updated } = await api.updateProfile(name);
+    const { user: updated } = await api.updateProfile({ displayName: name });
+    setUser(updated);
+  }, []);
+
+  const setAvatarPet = useCallback(async (pet: string | null) => {
+    const { user: updated } = await api.updateProfile({ avatarPet: pet });
     setUser(updated);
   }, []);
 
@@ -116,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refresh,
       logout,
       setDisplayName,
+      setAvatarPet,
       loginWithPassword,
       signup,
       changePassword,
@@ -127,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refresh,
       logout,
       setDisplayName,
+      setAvatarPet,
       loginWithPassword,
       signup,
       changePassword,

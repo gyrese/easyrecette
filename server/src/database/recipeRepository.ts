@@ -46,7 +46,9 @@ const recipeInclude = {
    * Découvrir. Seuls le nom d'affichage et l'identifiant sortent du serveur :
    * l'adresse e-mail n'est jamais exposée, y compris sur une fiche publique.
    */
-  user: { select: { id: true, name: true, displayName: true, avatarUrl: true } },
+  user: {
+    select: { id: true, name: true, displayName: true, avatarUrl: true, avatarPet: true },
+  },
 } satisfies Prisma.RecipeInclude;
 
 type RecipeWithRelations = Prisma.RecipeGetPayload<{ include: typeof recipeInclude }>;
@@ -55,6 +57,7 @@ export interface RecipeAuthor {
   id: string;
   name: string;
   avatarUrl: string | null;
+  avatarPet: string | null;
 }
 
 export interface RecipeDto extends GeneratedRecipe {
@@ -178,6 +181,7 @@ export function toDto(recipe: RecipeWithRelations, viewerId: string | null = nul
       id: recipe.user.id,
       name: publicAuthorName(recipe.user),
       avatarUrl: recipe.user.avatarUrl,
+      avatarPet: recipe.user.avatarPet,
     },
     copiedFromId: recipe.copiedFromId,
     isOwner,

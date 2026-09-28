@@ -35,6 +35,10 @@ model User {
   /// l'utilisateur la retire chez Google : jamais considérée comme acquise.
   avatarUrl String?
 
+  /// Pet culinaire choisi dans l'application. Il prime sur la photo Google
+  /// à l'affichage sans l'écraser, afin de pouvoir revenir à celle-ci.
+  avatarPet String?
+
   /// `sub` du jeton Google — identifiant stable, contrairement à l'email qui
   /// peut changer. Null sur les comptes antérieurs à l'authentification.
   googleId String? @unique

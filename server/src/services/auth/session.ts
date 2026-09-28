@@ -32,6 +32,7 @@ export interface SessionUser {
   name: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  avatarPet: string | null;
   /** Le compte a un mot de passe : la page compte propose alors de le changer. */
   hasPassword: boolean;
   /** Le compte est rattaché à Google. */
@@ -51,6 +52,7 @@ export function toSessionUser(user: {
   name: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  avatarPet: string | null;
   passwordHash: string | null;
   googleId: string | null;
 }): SessionUser {
@@ -60,6 +62,7 @@ export function toSessionUser(user: {
     name: user.name,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
+    avatarPet: user.avatarPet,
     hasPassword: user.passwordHash !== null,
     hasGoogle: user.googleId !== null,
   };

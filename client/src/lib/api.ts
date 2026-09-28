@@ -263,11 +263,11 @@ export const api = {
   /** Ferme la session sur tous les appareils. */
   logoutEverywhere: () => request<{ sessions: number }>('/auth/logout-all', { method: 'POST' }),
 
-  /** Change le nom d'auteur affiché sur les recettes publiées. */
-  updateProfile: (displayName: string | null) =>
+  /** Change le nom d'auteur et/ou le Pet utilisé comme avatar. */
+  updateProfile: (profile: { displayName?: string | null; avatarPet?: string | null }) =>
     request<{ user: AuthUser }>('/auth/profile', {
       method: 'PATCH',
-      body: JSON.stringify({ displayName }),
+      body: JSON.stringify(profile),
     }),
 
   deleteAccount: () => request<void>('/auth/account', { method: 'DELETE' }),

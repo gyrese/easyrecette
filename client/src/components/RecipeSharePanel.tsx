@@ -4,6 +4,7 @@ import { ApiError, api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Recipe } from '../lib/types';
 import { IconCheck, IconGlobe, IconLink, IconLock } from './Icons';
+import { PetAvatar } from './PetAvatar';
 import { Button, ErrorPanel, Input, Label } from './ui';
 
 /**
@@ -278,17 +279,12 @@ export function PublicRecipeBanner({
     <section className="rounded-card border-[1.5px] border-rule-strong bg-paper-raised px-5 py-4.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3.5">
-          {recipe.author.avatarUrl ? (
-            <img
-              src={recipe.author.avatarUrl}
-              alt=""
-              className="size-11 shrink-0 rounded-full border-[1.5px] border-rule-strong object-cover"
-            />
-          ) : (
-            <span className="grid size-11 shrink-0 place-items-center rounded-full border-[1.5px] border-rule-strong font-display text-lg text-ink">
-              {recipe.author.name.slice(0, 1).toUpperCase()}
-            </span>
-          )}
+          <PetAvatar
+            avatarPet={recipe.author.avatarPet}
+            avatarUrl={recipe.author.avatarUrl}
+            name={recipe.author.name}
+            className="size-11 text-[42px]"
+          />
 
           <div className="min-w-0">
             <Label as="p">Recette partagée par</Label>

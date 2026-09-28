@@ -162,6 +162,7 @@ export interface RecipeAuthor {
   /** Nom d'affichage choisi, à défaut le nom du compte, à défaut « Anonyme ». */
   name: string;
   avatarUrl: string | null;
+  avatarPet: string | null;
 }
 
 /** Nombre maximal d'étoiles. Le barème tient en une main. */
@@ -273,6 +274,8 @@ export interface AuthUser {
   /** Nom d'auteur choisi pour les recettes publiées. */
   displayName: string | null;
   avatarUrl: string | null;
+  /** Pet culinaire choisi comme avatar, ou null pour la photo de compte. */
+  avatarPet: string | null;
   /** Le compte a un mot de passe : la page compte propose de le changer. */
   hasPassword: boolean;
   /** Le compte est rattaché à Google. */
