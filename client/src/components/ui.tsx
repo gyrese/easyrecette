@@ -519,7 +519,14 @@ export function EmptyState({
   );
 }
 
-/** Apparition discrète — désactivée si l'utilisateur préfère moins d'animation. */
+/**
+ * Apparition discrète — désactivée si l'utilisateur préfère moins d'animation.
+ *
+ * Déclenchée à l'entrée dans le champ et non au montage : ce qui est visible
+ * d'emblée s'anime comme avant, mais une section sous la ligne de flottaison
+ * attend d'être atteinte au lieu de jouer son entrée hors de vue. Une seule
+ * fois — remonter la page ne doit pas refaire le spectacle.
+ */
 export function FadeIn({
   children,
   delay = 0,
@@ -536,7 +543,8 @@ export function FadeIn({
   return (
     <motion.div
       initial={{ opacity: 0, y: 26 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '0px 0px -8% 0px' }}
       transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
       className={className}
     >

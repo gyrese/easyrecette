@@ -36,3 +36,7 @@ server/media/
 # Binaire Windows local (yt-dlp) — inutile en Docker, où il est installé
 # depuis les releases Linux directement dans l'image (voir server/Dockerfile).
 server/bin/
+
+# Skills d agents installés localement (HyperFrames…), pas du code applicatif
+.agents/
+skills-lock.json

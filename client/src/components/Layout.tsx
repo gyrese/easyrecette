@@ -1,3 +1,5 @@
+import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { AccountMenu } from './AccountMenu';
@@ -27,6 +29,13 @@ import { IconBook, IconCart, IconGlobe, IconSparkle } from './Icons';
  *
  * Quatre entrées maximum : au-delà, la barre basse du téléphone devient
  * illisible et chaque cible passe sous les 44 px recommandés.
+ *
+ * Le mouvement de la coquille tient en trois gestes :
+ *  - l'onglet actif est un aplat noir qui glisse d'une entrée à l'autre
+ *    (`layoutId`) au lieu de s'éteindre ici et de se rallumer là ;
+ *  - chaque page entre par une courte remontée, comme une fiche qu'on pose ;
+ *  - un filet terre cuite, sous l'en-tête, mesure l'avancée dans la page.
+ * Tous trois disparaissent avec `prefers-reduced-motion`.
  */
 
 const NAV_SIGNED_IN = [
@@ -48,6 +57,9 @@ const TICKER = [
   'Liste de courses fusionnée',
   'Minuteurs par étape',
 ];
+
+/** Ressort commun aux aplats de navigation : vif, sans rebond visible. */
+const NAV_SPRING = { type: 'spring', stiffness: 520, damping: 42 } as const;
 
 function TickerRun() {
   return (
@@ -74,6 +86,21 @@ export function Layout() {
      session — des entrées s'ajoutent. L'inverse ferait clignoter la barre. */
   const nav = user ? NAV_SIGNED_IN : NAV_ANONYMOUS;
 
+  const reduce = useReducedMotion();
+
+  /* L'en-tête pose son ombre dure dès qu'il flotte au-dessus du contenu :
+     tant qu'on est tout en haut, il fait partie de la page. */
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const { scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 220, damping: 34, mass: 0.4 });
+
   return (
     <div className="relative flex min-h-dvh flex-col">
       {/* Halos : purement atmosphériques, jamais cliquables. */}
@@ -88,17 +115,24 @@ export function Layout() {
         className="relative z-40 overflow-hidden bg-ink text-paper"
         aria-hidden="true"
       >
-        <div className="animate-er-tick flex w-max py-[9px] font-mono text-[11px] font-normal tracking-[0.24em] uppercase">
+        <div className="animate-er-tick flex w-max py-[9px] hover:[animation-play-state:paused] font-mono text-[11px] font-normal tracking-[0.24em] uppercase">
           <TickerRun />
           <TickerRun />
         </div>
       </div>
 
-      <header className="sticky top-0 z-45 border-b-[1.5px] border-rule-strong bg-paper/82 backdrop-blur-[18px] backdrop-saturate-140">
+      <header
+        className={`sticky top-0 z-45 border-b-[1.5px] border-rule-strong bg-paper/82 backdrop-blur-[18px] backdrop-saturate-140 transition-shadow duration-300 ${
+          scrolled ? 'shadow-sticky' : ''
+        }`}
+      >
         <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-[18px] px-4 py-3 sm:px-6">
-          <NavLink to="/" className="mr-1.5 flex items-baseline gap-[9px] text-ink hover:text-ink">
+          <NavLink to="/" className="group mr-1.5 flex items-baseline gap-[9px] text-ink hover:text-ink">
             <span className="font-display text-[27px] leading-none tracking-[-0.02em]">
-              EasyRecette
+              Easy
+              <span className="italic transition-colors duration-300 group-hover:text-ember">
+                Recette
+              </span>
             </span>
             <span className="hidden font-mono text-[9.5px] font-normal tracking-[0.2em] text-ink-faint uppercase sm:inline">
               Éd. 26
@@ -112,16 +146,24 @@ export function Layout() {
                 to={to}
                 end={exact}
                 className={({ isActive }) =>
-                  `inline-flex min-h-11 items-center px-[15px] py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] uppercase transition-colors duration-200 ${
+                  `relative inline-flex min-h-11 items-center px-[15px] py-2.5 font-mono text-[10px] font-medium tracking-[0.16em] uppercase transition-colors duration-200 ${
                     index > 0 ? 'border-l-[1.5px] border-rule-strong' : ''
-                  } ${
-                    isActive
-                      ? 'bg-ink text-paper hover:text-paper'
-                      : 'text-ink/62 hover:bg-lime hover:text-ink'
-                  }`
+                  } ${isActive ? 'text-paper hover:text-paper' : 'text-ink/62 hover:bg-lime hover:text-ink'}`
                 }
               >
-                {label}
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.span
+                        layoutId="nav-active-desktop"
+                        transition={reduce ? { duration: 0 } : NAV_SPRING}
+                        className="absolute inset-0 bg-ink"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="relative">{label}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -143,11 +185,31 @@ export function Layout() {
 
           <AccountMenu />
         </div>
+
+        {/* Filet de lecture : décoratif, l'ascenseur du navigateur dit déjà
+            la même chose aux technologies d'assistance. */}
+        {!reduce && (
+          <motion.div
+            aria-hidden="true"
+            style={{ scaleX: progress }}
+            className="absolute inset-x-0 -bottom-[1.5px] h-[3px] origin-left bg-ember"
+          />
+        )}
       </header>
 
       {/* pb-28 réserve la place de la barre mobile fixe. */}
       <main className="relative z-10 flex-1 pb-28 sm:pb-16">
-        <Outlet key={location.pathname} />
+        {/* Clé sur le chemin : chaque page rejoue son entrée. Pas de sortie
+            animée — elle retarderait l'affichage de la page demandée pour
+            montrer celle qu'on vient de quitter. */}
+        <motion.div
+          key={location.pathname}
+          initial={reduce ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Outlet />
+        </motion.div>
       </main>
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-rule-strong bg-paper-raised/95 backdrop-blur-lg sm:hidden">
@@ -158,13 +220,31 @@ export function Layout() {
               to={to}
               end={exact}
               className={({ isActive }) =>
-                `label-mono-sm flex flex-1 flex-col items-center gap-1.5 py-3 text-[8.5px] transition-colors ${
+                `label-mono-sm relative flex flex-1 flex-col items-center gap-1.5 py-3 text-[8.5px] transition-colors ${
                   index > 0 ? 'border-l-[1.5px] border-rule' : ''
-                } ${isActive ? 'bg-ink text-paper hover:text-paper' : 'text-ink-soft'}`
+                } ${isActive ? 'text-paper hover:text-paper' : 'text-ink-soft active:bg-lime'}`
               }
             >
-              <Icon className="text-xl" />
-              {label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-active-mobile"
+                      transition={reduce ? { duration: 0 } : NAV_SPRING}
+                      className="absolute inset-0 bg-ink"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <motion.span
+                    className="relative"
+                    animate={isActive && !reduce ? { y: [0, -4, 0] } : { y: 0 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <Icon className="text-xl" />
+                  </motion.span>
+                  <span className="relative">{label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>

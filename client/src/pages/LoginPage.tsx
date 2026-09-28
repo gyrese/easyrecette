@@ -1,3 +1,4 @@
+import { useReducedMotion } from 'framer-motion';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { IconGlobe, IconGoogle } from '../components/Icons';
@@ -25,6 +26,49 @@ import { useAuth } from '../lib/auth';
 
 type Mode = 'login' | 'signup';
 
+/** Point de bascule `lg` de Tailwind, là où la page passe en deux colonnes. */
+const DESKTOP_QUERY = '(min-width: 1024px)';
+
+function useIsDesktop(): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => setMatches(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  return matches;
+}
+
+/**
+ * La boucle d'accueil (video/hero-loop, composée avec HyperFrames) : une vidéo
+ * de cuisine devient une fiche. Muette et décorative — la page dit la même
+ * chose en mots. Sans animation souhaitée, on s'en tient au poster, qui montre
+ * la fiche finie. Rendue à un seul endroit à la fois (voir `useIsDesktop`) :
+ * une copie masquée en CSS continuerait de se télécharger et de tourner.
+ */
+function HeroLoop({ autoPlay, className = '' }: { autoPlay: boolean; className?: string }) {
+  return (
+    <figure
+      className={`overflow-hidden rounded-card border-[1.5px] border-rule-strong bg-paper shadow-hero ${className}`}
+    >
+      <video
+        className="block aspect-video w-full"
+        poster="/video/hero-loop-poster.webp"
+        autoPlay={autoPlay}
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        aria-hidden="true"
+      >
+        <source src="/video/hero-loop.webm" type="video/webm" />
+        <source src="/video/hero-loop.mp4" type="video/mp4" />
+      </video>
+    </figure>
+  );
+}
+
 /** Ce qu'on peut faire sans compte, dit franchement. */
 const WITHOUT_ACCOUNT = [
   'Parcourir les recettes partagées par les autres',
@@ -44,6 +88,9 @@ export function LoginPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading, googleConfigured, loginWithPassword, signup } = useAuth();
+
+  const reduceMotion = useReducedMotion();
+  const isDesktop = useIsDesktop();
 
   const googleError = params.get('error');
   const next = params.get('next') ?? '/recipes';
@@ -107,6 +154,10 @@ export function LoginPage() {
             que tu importes reste privé par défaut : tu choisis fiche par fiche ce que tu rends
             public.
           </p>
+
+          {/* Sur téléphone la colonne de droite passe sous le formulaire : la
+              boucle remonte ici pour être vue avant de devoir s'inscrire. */}
+          {!isDesktop && <HeroLoop autoPlay={!reduceMotion} className="mt-8" />}
 
           <div className="mt-9 max-w-md">
             {googleError && (
@@ -253,6 +304,8 @@ export function LoginPage() {
         </FadeIn>
 
         <FadeIn delay={0.12}>
+          {isDesktop && <HeroLoop autoPlay={!reduceMotion} className="mb-8" />}
+
           <div className="rounded-control border-[1.5px] border-rule-strong bg-paper-raised">
             <div className="border-b-[1.5px] border-rule-strong px-6 py-5">
               <Label as="h2">Sans compte</Label>

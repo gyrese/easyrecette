@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>EasyRecette — boucle d'accueil</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* Polices de la marque, embarquées en local : rendu déterministe. */
+      @font-face {
+        font-family: 'Instrument Serif';
+        font-style: normal;
+        font-weight: 400;
+        src: url('assets/fonts/instrument.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Instrument Serif';
+        font-style: italic;
+        font-weight: 400;
+        src: url('assets/fonts/instrument-italic.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Bricolage Grotesque';
+        font-style: normal;
+        font-weight: 200 800;
+        src: url('assets/fonts/bricolage.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'DM Mono';
+        font-style: normal;
+        font-weight: 400;
+        src: url('assets/fonts/dmmono-400.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'DM Mono';
+        font-style: normal;
+        font-weight: 500;
+        src: url('assets/fonts/dmmono-500.woff2') format('woff2');
+      }
+
+      :root {
+        --paper: #f2ede3;
+        --paper-raised: #f7f3ea;
+        --ink: #17140f;
+        --ink-soft: #4a4640;
+        --ember: #d6461f;
+        --lime: #d8f250;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--paper);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'Bricolage Grotesque', sans-serif;
+        font-weight: 300;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------- Fond : papier réglé, grain, halos ---------- */
+      .ruled {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(rgb(23 20 15 / 0.07) 2px, transparent 2px);
+        background-size: 100% 34px;
+      }
+      .grain {
+        position: absolute;
+        inset: 0;
+        opacity: 0.12;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='7'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .halo {
+        position: absolute;
+        border-radius: 50%;
+      }
+      #halo-ember {
+        width: 1100px;
+        height: 1100px;
+        right: -300px;
+        top: -420px;
+        background: radial-gradient(circle, rgb(214 70 31 / 0.2), transparent 66%);
+      }
+      #halo-lime {
+        width: 1000px;
+        height: 1000px;
+        left: -360px;
+        bottom: -480px;
+        background: radial-gradient(circle, rgb(216 242 80 / 0.42), transparent 66%);
+      }
+
+      /* ---------- Repères de maquette, fixes sur toute la boucle ---------- */
+      .mono {
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+      .corner {
+        position: absolute;
+        font-size: 22px;
+        color: var(--ink-soft);
+      }
+      #corner-tl { left: 96px; top: 64px; }
+      #corner-tr { right: 96px; top: 64px; }
+      #corner-bl { left: 96px; bottom: 60px; }
+      #corner-br { right: 96px; bottom: 60px; }
+      .frame-rule {
+        position: absolute;
+        left: 96px;
+        right: 96px;
+        height: 3px;
+        background: var(--ink);
+      }
+      #rule-top { top: 110px; }
+      #rule-bottom { bottom: 106px; }
+
+      /* ---------- Le téléphone ---------- */
+      #phone {
+        position: absolute;
+        left: 250px;
+        top: 170px;
+        width: 420px;
+        height: 740px;
+        border: 4px solid var(--ink);
+        border-radius: 46px;
+        background: var(--ink);
+        box-shadow: 14px 14px 0 rgb(23 20 15 / 0.18);
+        padding: 14px;
+      }
+      #screen {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 32px;
+        overflow: hidden;
+        background: #231f19;
+      }
+      #screen-label {
+        position: absolute;
+        left: 30px;
+        top: 34px;
+        font-size: 20px;
+        color: var(--paper);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #rec-dot {
+        display: block;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--ember);
+      }
+      #pan-svg {
+        position: absolute;
+        left: 0;
+        top: 170px;
+        width: 392px;
+        height: 380px;
+      }
+      #scan {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 150px;
+        background: linear-gradient(to bottom, rgb(214 70 31 / 0), rgb(214 70 31 / 0.34));
+        border-bottom: 5px solid var(--ember);
+      }
+      #progress-track {
+        position: absolute;
+        left: 30px;
+        right: 30px;
+        bottom: 44px;
+        height: 6px;
+        background: rgb(242 237 227 / 0.28);
+      }
+      #progress-fill {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: var(--ember);
+        transform-origin: left center;
+      }
+      #screen-time {
+        position: absolute;
+        left: 30px;
+        bottom: 70px;
+        font-size: 20px;
+        color: var(--paper);
+      }
+
+      /* ---------- Le trajet pointillé ---------- */
+      #path-svg {
+        position: absolute;
+        left: 690px;
+        top: 500px;
+        width: 240px;
+        height: 80px;
+      }
+
+      /* ---------- La fiche ---------- */
+      #card {
+        position: absolute;
+        left: 930px;
+        top: 150px;
+        width: 820px;
+        height: 770px;
+        transform-origin: 50% 60%;
+      }
+      #card-face,
+      #card-content {
+        position: absolute;
+        inset: 0;
+      }
+      #card-shadow,
+      #card-edge,
+      #card-paper {
+        position: absolute;
+        clip-path: polygon(0 0, calc(100% - 44px) 0, 100% 44px, 100% 100%, 0 100%);
+      }
+      #card-shadow {
+        inset: 0;
+        top: 16px;
+        left: 16px;
+        right: -16px;
+        bottom: -16px;
+        background: rgb(23 20 15 / 0.18);
+      }
+      #card-edge {
+        inset: 0;
+        background: var(--ink);
+      }
+      #card-paper {
+        inset: 4px;
+        background: var(--paper-raised);
+        clip-path: polygon(0 0, calc(100% - 42px) 0, 100% 42px, 100% 100%, 0 100%);
+      }
+      /* Bord perforé : des trous couleur page le long du pied de fiche. */
+      #card-punch {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 18px;
+        height: 30px;
+        background-image: radial-gradient(circle at 15px 15px, var(--paper) 9px, transparent 10px);
+        background-size: 30px 30px;
+        background-repeat: repeat-x;
+        background-position: 12px 0;
+      }
+      .card-label {
+        position: absolute;
+        left: 60px;
+        top: 52px;
+        font-size: 20px;
+        color: var(--ink-soft);
+      }
+      #card-no {
+        left: auto;
+        right: 90px;
+      }
+      #card-title {
+        position: absolute;
+        left: 58px;
+        top: 112px;
+        width: 700px;
+        height: 222px;
+        font-family: 'Instrument Serif', serif;
+        font-weight: 400;
+        font-size: 104px;
+        line-height: 1;
+        letter-spacing: -0.035em;
+      }
+      .title-line {
+        position: absolute;
+        left: 0;
+        display: block;
+        height: 104px;
+      }
+      #title-1 { top: 0; }
+      #title-2 { top: 112px; }
+      .hl-wrap {
+        position: relative;
+        display: inline-block;
+        line-height: 1;
+        font-style: italic;
+      }
+      #hl-bar {
+        position: absolute;
+        left: -8px;
+        right: -10px;
+        bottom: 10px;
+        height: 36px;
+        background: var(--lime);
+        transform-origin: left center;
+        z-index: 0;
+      }
+      .hl-text {
+        position: relative;
+        z-index: 1;
+      }
+      #card-meta {
+        position: absolute;
+        left: 60px;
+        top: 350px;
+        width: 700px;
+        display: flex;
+        gap: 28px;
+        font-size: 22px;
+        color: var(--ink);
+        padding-bottom: 18px;
+        border-bottom: 3px dotted rgb(23 20 15 / 0.4);
+      }
+      .meta-item {
+        display: block;
+      }
+      .meta-item b {
+        font-weight: 500;
+        color: var(--ink);
+        background: var(--lime);
+        padding: 0 6px;
+      }
+      .col-head {
+        position: absolute;
+        top: 418px;
+        font-size: 20px;
+        color: var(--ink-soft);
+      }
+      #head-ing { left: 60px; }
+      #head-steps { left: 420px; }
+
+      /* Les petites fiches ingrédients : elles naissent dans la vidéo et
+         finissent rangées dans la colonne de gauche de la grande fiche. */
+      .ing {
+        position: absolute;
+        left: 60px;
+        width: 318px;
+        height: 54px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        background: var(--paper-raised);
+        border: 3px solid var(--ink);
+        border-radius: 3px;
+        box-shadow: 6px 6px 0 rgb(23 20 15 / 0.2);
+        font-size: 26px;
+        font-weight: 400;
+        white-space: nowrap;
+      }
+      .ing .qty {
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        font-size: 24px;
+        color: var(--ink);
+        background: var(--lime);
+        padding: 0 6px;
+      }
+
+      .step {
+        position: absolute;
+        left: 420px;
+        width: 340px;
+        display: flex;
+        gap: 16px;
+        font-size: 25px;
+        line-height: 1.25;
+        font-weight: 400;
+      }
+      .step-n {
+        font-family: 'Instrument Serif', serif;
+        font-size: 44px;
+        line-height: 0.8;
+        color: var(--ember);
+        flex: 0 0 26px;
+      }
+
+      #timer {
+        position: absolute;
+        left: 420px;
+        top: 640px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      #timer-svg {
+        width: 72px;
+        height: 72px;
+        display: block;
+      }
+      #timer-text {
+        white-space: nowrap;
+        font-size: 22px;
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="12"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Fond : présent sur toute la boucle. -->
+      <div id="bg" class="clip" data-start="0" data-duration="12" data-track-index="0">
+        <div id="halo-ember" class="halo"></div>
+        <div id="halo-lime" class="halo"></div>
+        <div class="ruled"></div>
+        <div class="grain"></div>
+        <div id="rule-top" class="frame-rule"></div>
+        <div id="rule-bottom" class="frame-rule"></div>
+        <div id="corner-tl" class="corner mono">EasyRecette — Éd. 26</div>
+        <div id="corner-tr" class="corner mono">Vidéo → Fiche</div>
+        <div id="corner-bl" class="corner mono">Extraction IA</div>
+        <div id="corner-br" class="corner mono">N° 047</div>
+      </div>
+
+      <!-- La scène : téléphone, trajet, fiche. -->
+      <div id="scene" class="clip" data-start="0" data-duration="12" data-track-index="1">
+        <div id="phone">
+          <div id="screen">
+            <div id="screen-label" class="mono"><span id="rec-dot"></span>Vidéo · 0:47</div>
+            <svg id="pan-svg" data-layout-allow-overflow viewBox="0 0 392 380" fill="none">
+              <g id="steam" data-layout-allow-overflow stroke="#f2ede3" stroke-width="5" stroke-linecap="round" opacity="0.9">
+                <path id="steam-1" d="M150 110 c-16 -22 16 -38 0 -62 c-16 -22 14 -36 0 -56" />
+                <path id="steam-2" d="M196 104 c-16 -22 16 -38 0 -62 c-16 -22 14 -36 0 -56" />
+                <path id="steam-3" d="M242 110 c-16 -22 16 -38 0 -62 c-16 -22 14 -36 0 -56" />
+              </g>
+              <g id="pan">
+                <rect x="300" y="190" width="92" height="22" rx="4" fill="#f2ede3" />
+                <ellipse cx="190" cy="200" rx="124" ry="58" fill="#17140f" stroke="#f2ede3" stroke-width="6" />
+                <ellipse id="crepe" cx="190" cy="196" rx="94" ry="40" fill="#f2ede3" />
+                <circle cx="160" cy="190" r="7" fill="#d6461f" />
+                <circle cx="214" cy="204" r="6" fill="#d6461f" />
+                <circle cx="198" cy="182" r="4" fill="#d6461f" />
+                <circle cx="232" cy="188" r="4" fill="#d6461f" />
+              </g>
+            </svg>
+            <div id="scan" data-layout-allow-overflow></div>
+            <div id="screen-time" class="mono">0:12 / 0:47</div>
+            <div id="progress-track"><span id="progress-fill"></span></div>
+          </div>
+        </div>
+
+        <svg id="path-svg" viewBox="0 0 240 80" fill="none">
+          <path
+            id="path-line"
+            d="M4 40 L214 40"
+            stroke="#17140f"
+            stroke-width="4"
+            stroke-dasharray="2 12"
+            stroke-linecap="round"
+          />
+          <path id="path-head" d="M204 26 L224 40 L204 54" stroke="#17140f" stroke-width="4" stroke-linejoin="round" />
+        </svg>
+
+        <div id="card">
+          <div id="card-face">
+            <div id="card-shadow"></div>
+            <div id="card-edge"></div>
+            <div id="card-paper">
+              <div id="card-punch"></div>
+            </div>
+          </div>
+
+          <div id="card-content">
+            <div id="card-kind" class="card-label mono">Fiche · Dessert</div>
+            <div id="card-no" class="card-label mono">N° 047</div>
+            <h1 id="card-title" data-layout-allow-overlap>
+              <span id="title-1" class="title-line" data-layout-allow-overlap>Crêpes du</span>
+              <span id="title-2" class="title-line"
+                ><span class="hl-wrap"><span id="hl-bar"></span><span class="hl-text" data-layout-allow-overlap>dimanche</span></span></span
+              >
+            </h1>
+            <div id="card-meta" class="mono">
+              <span class="meta-item"><b>4</b> pers.</span>
+              <span class="meta-item"><b>25</b> min</span>
+              <span class="meta-item">Facile</span>
+            </div>
+            <div id="head-ing" class="col-head mono">Ingrédients</div>
+            <div id="head-steps" class="col-head mono">Étapes</div>
+
+            <div id="step-1" class="step" style="top: 456px"><span class="step-n">1</span><span>Fouetter farine, œufs et sel.</span></div>
+            <div id="step-2" class="step" style="top: 530px"><span class="step-n">2</span><span>Verser le lait peu à peu.</span></div>
+            <div id="timer">
+              <svg id="timer-svg" viewBox="0 0 72 72" fill="none">
+                <circle cx="36" cy="36" r="30" stroke="rgb(23 20 15 / 0.18)" stroke-width="6" />
+                <circle
+                  id="timer-ring"
+                  cx="36"
+                  cy="36"
+                  r="30"
+                  stroke="#d6461f"
+                  stroke-width="6"
+                  transform="rotate(-90 36 36)"
+                />
+                <line id="timer-hand" x1="36" y1="36" x2="36" y2="14" stroke="#17140f" stroke-width="4" stroke-linecap="round" />
+              </svg>
+              <div id="timer-text" class="mono">1:00 / face</div>
+            </div>
+          </div>
+
+          <div id="ing-1" class="ing" data-layout-allow-overflow data-layout-allow-overlap style="top: 456px"><span class="qty">200 g</span>farine</div>
+          <div id="ing-2" class="ing" data-layout-allow-overflow data-layout-allow-overlap style="top: 522px"><span class="qty">3</span>œufs</div>
+          <div id="ing-3" class="ing" data-layout-allow-overflow data-layout-allow-overlap style="top: 588px"><span class="qty">1</span>pincée de sel</div>
+          <div id="ing-4" class="ing" data-layout-allow-overflow data-layout-allow-overlap style="top: 654px"><span class="qty">25 cl</span>de lait</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const EXPO = 'expo.out';
+
+      /* ---------- Ambiance : un cycle complet par boucle ---------- */
+      // yoyo + repeat 1 : chaque halo revient exactement à son point de
+      // départ à 12 s, la boucle reste sans couture.
+      tl.fromTo('#halo-ember', { x: 0, y: 0 }, { x: -60, y: 50, duration: 6, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 0);
+      tl.fromTo('#halo-lime', { x: 0, y: 0 }, { x: 70, y: -40, duration: 6, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 0);
+
+      /* ---------- 0–3 s : la vidéo entre, le scan la parcourt ---------- */
+      tl.fromTo('#phone', { x: -720, rotation: -4 }, { x: 0, rotation: -2, duration: 1.1, ease: EXPO }, 0.15);
+      tl.fromTo('#progress-fill', { scaleX: 0.08 }, { scaleX: 0.92, duration: 9.6, ease: 'none' }, 0.4);
+      tl.fromTo('#rec-dot', { opacity: 1 }, { opacity: 0.2, duration: 0.5, ease: 'steps(1)', yoyo: true, repeat: 19 }, 0);
+      tl.fromTo('#pan', { rotation: -2, transformOrigin: '50% 60%' }, { rotation: 2, duration: 0.75, ease: 'sine.inOut', yoyo: true, repeat: 13 }, 0);
+      ['#steam-1', '#steam-2', '#steam-3'].forEach((sel, i) => {
+        tl.fromTo(
+          sel,
+          { y: 20, opacity: 0 },
+          { keyframes: { y: [20, 0, -26], opacity: [0, 0.9, 0] }, duration: 1.6, ease: 'none', repeat: 5 },
+          0.3 + i * 0.45,
+        );
+      });
+      tl.fromTo('#scan', { y: -170 }, { y: 720, duration: 1.7, ease: 'power2.inOut', repeat: 1 }, 1.0);
+
+      /* ---------- 3–7 s : les ingrédients sortent en fiches ---------- */
+      // Point de départ : le centre de l'écran, exprimé dans le repère de
+      // la fiche (#card, à 930,150). Écart vers la grappe, puis vers la case.
+      const PHONE_CX = 460 - 930;
+      const PHONE_CY = 540 - 150;
+      const ING = [
+        { id: '#ing-1', top: 456, cluster: [-10, -300, -6] },
+        { id: '#ing-2', top: 522, cluster: [300, -270, 4] },
+        { id: '#ing-3', top: 588, cluster: [40, -150, 3] },
+        { id: '#ing-4', top: 654, cluster: [330, -120, -5] },
+      ];
+      // Pointillés : le motif ne peut pas « se tracer » par dashoffset, on le
+      // découvre donc de gauche à droite par un masque.
+      tl.fromTo('#path-svg', { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.7, ease: EXPO }, 2.7);
+      tl.fromTo('#path-head', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.5, ease: EXPO }, 3.0);
+
+      ING.forEach((ing, i) => {
+        const startX = PHONE_CX - (60 + 159);
+        const startY = PHONE_CY - (ing.top + 27);
+        const [cx, cy, rot] = ing.cluster;
+        // Sortie de la vidéo : un coup de tampon (petite montée d'échelle,
+        // qui se pose sans rebond), en cascade.
+        tl.fromTo(
+          ing.id,
+          { x: startX, y: startY, scale: 0.3, rotation: 0, opacity: 0 },
+          { x: cx, y: cy, scale: 1, rotation: rot, opacity: 1, duration: 0.9, ease: 'power3.out' },
+          3.2 + i * 0.55,
+        );
+        // Rangement dans la fiche.
+        tl.to(ing.id, { x: 0, y: 0, rotation: 0, duration: 0.85, ease: 'power3.inOut' }, 7.2 + i * 0.09);
+      });
+
+      /* ---------- 7–10 s : la fiche se compose ---------- */
+      tl.fromTo('#card', { rotation: -2.5, y: 0, x: 0, opacity: 1 }, { rotation: -2.5, duration: 0.01 }, 0);
+      tl.fromTo('#card-face', { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: EXPO }, 6.9);
+      tl.fromTo('#card-kind, #card-no', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, ease: EXPO }, 7.3);
+      tl.fromTo('#title-1', { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.8, ease: EXPO }, 7.45);
+      tl.fromTo('#title-2', { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.8, ease: EXPO }, 7.6);
+      tl.fromTo('#hl-bar', { scaleX: 0, skewX: -4 }, { scaleX: 1, duration: 0.6, ease: 'power2.out' }, 8.2);
+      tl.fromTo('#card-meta', { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.7, ease: 'power3.out' }, 8.35);
+      tl.fromTo('#head-ing, #head-steps', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 7.9);
+      tl.fromTo('#step-1', { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: EXPO }, 8.5);
+      tl.fromTo('#step-2', { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: EXPO }, 8.65);
+      tl.fromTo('#timer', { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: EXPO }, 8.8);
+
+      // Minuteur : l'anneau se trace, l'aiguille fait un tour.
+      const RING = 2 * Math.PI * 30;
+      tl.fromTo('#timer-ring', { strokeDasharray: RING, strokeDashoffset: RING }, { strokeDashoffset: 0, duration: 1.6, ease: 'none' }, 9.0);
+      tl.fromTo('#timer-hand', { rotation: 0, svgOrigin: '36 36' }, { rotation: 360, duration: 1.6, ease: 'steps(12)' }, 9.0);
+
+      /* ---------- 10–12 s : la fiche se redresse, puis tout sort ---------- */
+      tl.to('#card', { rotation: 0, y: -18, duration: 0.6, ease: EXPO }, 9.85);
+      tl.to('#card-shadow', { x: 10, y: 10, duration: 0.6, ease: EXPO }, 9.85);
+
+      tl.to('#path-line, #path-head', { opacity: 0, duration: 0.3, ease: 'power2.in' }, 10.45);
+      tl.to('#phone', { x: -760, rotation: -5, duration: 0.8, ease: 'power3.in' }, 10.55);
+      tl.to('#card', { x: 1150, rotation: 3, duration: 0.85, ease: 'power3.in' }, 10.6);
+
+      window.__timelines['main'] = tl;
+    </script>
+  </body>
+</html>

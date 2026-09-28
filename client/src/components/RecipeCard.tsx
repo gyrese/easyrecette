@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import {
   categoryLabel,
@@ -16,10 +16,13 @@ import { RecipeImage, Spinner } from './ui';
 /**
  * Carte de recette.
  *
- * Vocabulaire Tailwind standard : carte droite, arrondie, ombre douce qui se
- * creuse au survol, image qui zoome légèrement en `scale`. L'image occupe
- * les deux tiers de la carte (§16, « photographies culinaires mises en
- * avant ») — c'est le seul héritage direct de la maquette précédente.
+ * Une fiche cartonnée de la maquette : filet noir, coins au massicot, ombre
+ * dure décalée. Chaque fiche repose légèrement de travers dans le fichier
+ * (`--er-rot`, dérivé de l'identifiant pour rester stable d'un rendu à
+ * l'autre) et se redresse au survol en se soulevant — le geste `.fiche` de
+ * index.css, qui pilote aussi le zoom lent de la photo (`.er-reveal`).
+ * L'image occupe les deux tiers de la carte (§16, « photographies
+ * culinaires mises en avant »).
  *
  * L'état de sélection sert à la liste de courses : on peut cocher plusieurs
  * recettes depuis la bibliothèque puis les envoyer d'un coup.
@@ -54,6 +57,24 @@ interface Props {
   index?: number;
 }
 
+/**
+ * Angle de repos de la fiche, entre -1.2° et +1.2°. Dérivé de l'identifiant
+ * et non du hasard : la grille ne doit pas se réagencer à chaque rendu.
+ */
+function restingTilt(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return `${((Math.abs(hash) % 25) - 12) / 10}deg`;
+}
+
+/** Pastille posée sur la photo : une étiquette découpée, pas une gélule. */
+const TAG =
+  'rounded-control border-[1.5px] border-rule-strong px-2 py-1 font-mono text-[10px] font-medium tracking-[0.12em] uppercase';
+
+/** Bouton carré superposé à la photo, qui s'enfonce sous le doigt. */
+const OVERLAY_BUTTON =
+  'grid size-9 place-items-center rounded-control border-[1.5px] border-rule-strong shadow-[2px_2px_0_#17140f] transition-[background-color,color,transform,box-shadow] duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none';
+
 export function RecipeCard({
   recipe,
   selectable = false,
@@ -75,18 +96,23 @@ export function RecipeCard({
 
   return (
     <article
-      style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
-      className={`group relative animate-er-in overflow-hidden rounded-2xl border bg-paper-raised shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl ${
-        selected ? 'border-ember ring-2 ring-ember/40' : 'border-rule hover:border-rule-strong'
+      style={
+        {
+          '--er-rot': restingTilt(recipe.id),
+          animationDelay: `${Math.min(index * 60, 360)}ms`,
+        } as CSSProperties
+      }
+      className={`fiche animate-er-in-fiche group relative overflow-hidden rounded-card border-[1.5px] border-rule-strong bg-paper-raised shadow-card hover:shadow-raised focus-within:shadow-raised ${
+        selected ? 'outline-[3px] outline-offset-2 outline-ember' : ''
       }`}
     >
       <Link to={`/recipe/${recipe.id}`} className="block text-ink hover:text-ink">
-        <div className="relative aspect-4/3 overflow-hidden bg-paper-sunk">
+        <div className="relative aspect-4/3 overflow-hidden border-b-[1.5px] border-rule-strong bg-paper-sunk">
           <RecipeImage
             src={displayImage(recipe)}
             alt={recipe.title}
             priority={index < 4}
-            className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            className="er-reveal size-full object-cover"
           />
 
           {/* Voile dégradé en pied d'image : garantit la lisibilité de la
@@ -94,7 +120,7 @@ export function RecipeCard({
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
 
           {recipe.rating !== null && (
-            <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-paper/95 px-2.5 py-1.5 shadow-sm backdrop-blur-sm">
+            <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-control border-[1.5px] border-rule-strong bg-paper-raised px-2 py-1">
               <Stars value={recipe.rating} size="sm" />
               <span className="label-mono-sm text-ink-soft">{RATING_LABELS[recipe.rating]}</span>
             </div>
@@ -102,8 +128,8 @@ export function RecipeCard({
 
           {recipe.totalTime !== null && (
             <span
-              className={`absolute top-2.5 right-2.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.1em] uppercase shadow-sm ${
-                recipe.totalTime <= 30 ? 'bg-ember text-ember-ink' : 'bg-paper/95 text-ink backdrop-blur-sm'
+              className={`absolute top-2.5 right-2.5 ${TAG} ${
+                recipe.totalTime <= 30 ? 'bg-ember text-ember-ink' : 'bg-paper-raised text-ink'
               }`}
             >
               {formatDurationShort(recipe.totalTime)}
@@ -115,7 +141,7 @@ export function RecipeCard({
               n'apprendrait rien. Elle occupe le coin bas droit, libre de
               toute autre information. */}
           {recipe.isPublic && recipe.isOwner && (
-            <span className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.1em] text-ink uppercase shadow-sm">
+            <span className={`absolute right-2.5 bottom-2.5 flex items-center gap-1.5 bg-lime text-ink ${TAG}`}>
               <IconGlobe className="text-xs" />
               Partagée
             </span>
@@ -130,7 +156,7 @@ export function RecipeCard({
                 .join(' · ') || 'Fiche'}
             </span>
             {recipe.servings !== null && (
-              <span className="rounded-full bg-paper-sunk px-2 py-0.5 font-mono text-[11px] font-medium text-ink-soft">
+              <span className="rounded-control border border-rule px-1.5 py-0.5 font-mono text-[11px] font-medium text-ink-soft">
                 {recipe.servings} pers.
               </span>
             )}
@@ -189,10 +215,10 @@ export function RecipeCard({
                 : `Ajouter ${recipe.title} aux favoris`
             }
             aria-pressed={recipe.isFavorite}
-            className={`grid size-9 place-items-center rounded-full shadow-sm backdrop-blur-sm transition-colors ${
+            className={`${OVERLAY_BUTTON} ${
               recipe.isFavorite
                 ? 'bg-ember text-ember-ink'
-                : 'bg-paper/90 text-ink hover:bg-ember hover:text-ember-ink'
+                : 'bg-paper-raised text-ink hover:bg-ember hover:text-ember-ink'
             }`}
           >
             <IconHeart filled={recipe.isFavorite} />
@@ -212,8 +238,8 @@ export function RecipeCard({
                 : `Sélectionner ${recipe.title}`
             }
             aria-pressed={selected}
-            className={`grid size-9 place-items-center rounded-full shadow-sm backdrop-blur-sm transition-colors ${
-              selected ? 'bg-lime text-ink' : 'bg-paper/90 text-ink hover:bg-lime'
+            className={`${OVERLAY_BUTTON} ${
+              selected ? 'bg-lime text-ink' : 'bg-paper-raised text-ink hover:bg-lime'
             }`}
           >
             <IconCheck />
@@ -227,7 +253,7 @@ export function RecipeCard({
             onClick={(event) => event.stopPropagation()}
             aria-label={`Modifier ${recipe.title}`}
             title="Modifier la recette"
-            className="grid size-9 place-items-center rounded-full bg-paper/90 text-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-lime hover:text-ink"
+            className={`${OVERLAY_BUTTON} bg-paper-raised text-ink hover:bg-lime hover:text-ink`}
           >
             <IconEdit />
           </Link>
@@ -245,7 +271,7 @@ export function RecipeCard({
               setConfirming(true);
             }}
             aria-label={`Supprimer ${recipe.title}`}
-            className="ml-0.5 grid size-9 place-items-center rounded-full bg-paper/90 text-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-danger hover:text-paper"
+            className={`${OVERLAY_BUTTON} ml-0.5 bg-paper-raised text-ink hover:bg-danger hover:text-paper`}
           >
             <IconTrash />
           </button>
@@ -266,7 +292,7 @@ export function RecipeCard({
           }}
           disabled={copying}
           aria-label={`Enregistrer ${recipe.title} dans mes recettes`}
-          className="absolute top-2.5 left-2.5 z-10 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-paper/92 px-3 font-mono text-[10px] font-semibold tracking-[0.12em] text-ink uppercase shadow-sm backdrop-blur-sm transition-colors hover:bg-lime disabled:cursor-not-allowed disabled:opacity-60"
+          className="press absolute top-2.5 left-2.5 z-10 inline-flex min-h-9 items-center gap-1.5 rounded-control border-[1.5px] border-rule-strong bg-paper-raised px-3 font-mono text-[10px] font-semibold tracking-[0.12em] text-ink uppercase hover:bg-lime disabled:cursor-not-allowed disabled:opacity-60"
         >
           {copying ? <Spinner className="size-3" /> : <IconCopy />}
           {copying ? 'Copie…' : 'Enregistrer'}
@@ -275,7 +301,7 @@ export function RecipeCard({
 
       {/* --- Confirmation de suppression --- */}
       {confirming && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-paper/95 px-4 text-center backdrop-blur-sm">
+        <div className="animate-er-in absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-paper/95 [animation-duration:.35s] px-4 text-center backdrop-blur-sm">
           <p className="font-display text-xl leading-tight text-ink">Supprimer&nbsp;?</p>
           <p className="clamp-2 text-[13px] leading-snug text-ink-soft">{recipe.title}</p>
           <p className="label-mono-sm text-ink-faint">Cette action est définitive</p>
@@ -287,7 +313,7 @@ export function RecipeCard({
                 setConfirming(false);
                 onDelete?.(recipe.id);
               }}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-danger px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-paper transition-opacity hover:opacity-85"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-control border-[1.5px] border-rule-strong bg-danger px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-paper transition-opacity hover:opacity-85"
             >
               <IconTrash />
               Supprimer
@@ -300,7 +326,7 @@ export function RecipeCard({
                  clavier — jamais la suppression. */
               autoFocus
               onClick={() => setConfirming(false)}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-rule-strong px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-ink transition-colors hover:bg-paper-sunk"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-control border-[1.5px] border-rule-strong px-3.5 font-mono text-[10px] font-semibold tracking-[0.12em] uppercase text-ink transition-colors hover:bg-paper-sunk"
             >
               <IconClose />
               Annuler
