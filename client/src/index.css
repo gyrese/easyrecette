@@ -580,3 +580,36 @@
     transform: none !important;
   }
 }
+
+/* La sauce de la jauge d'import : un aplat terre cuite parcouru de bulles
+   qui dérivent, pour que la barre ait l'air de mijoter même à l'arrêt. */
+@keyframes er-simmer {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -36px -4px,
+      -52px 3px,
+      0 0;
+  }
+}
+
+@layer utilities {
+  .er-sauce {
+    background-color: var(--color-ember);
+    background-image:
+      radial-gradient(circle at 30% 60%, rgb(247 201 72 / 0.7) 0 1.6px, transparent 2.2px),
+      radial-gradient(circle at 70% 35%, rgb(242 237 227 / 0.45) 0 1.2px, transparent 1.8px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.16), transparent 55%);
+    background-size:
+      36px 100%,
+      52px 100%,
+      100% 100%;
+    animation: er-simmer 1.8s linear infinite;
+    transition: filter 0.4s;
+  }
+}

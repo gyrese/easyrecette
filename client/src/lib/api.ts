@@ -6,6 +6,7 @@ import type {
   Facets,
   GeneratedRecipe,
   ImportResult,
+  ImportStep,
   Recipe,
   RecipeFilters,
   RecipeListResponse,
@@ -93,6 +94,87 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+/**
+ * Import en flux NDJSON (`?stream=1`) : `onSteps` reçoit le journal réel à
+ * chaque étape franchie, la promesse se résout sur le résultat final.
+ *
+ * Les refus en amont (session, quota, validation) arrivent en JSON avec leur
+ * code HTTP : ils deviennent une ApiError comme partout ailleurs.
+ */
+async function streamImport(
+  path: string,
+  body: unknown,
+  onSteps: (steps: ImportStep[]) => void,
+): Promise<ImportResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}?stream=1`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(
+      "Impossible de joindre le serveur. Vérifie qu'il est bien démarré.",
+      { code: 'NETWORK', status: 0 },
+    );
+  }
+
+  if (!response.ok || !response.body) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string; canRetryManually?: boolean };
+    } | null;
+    throw new ApiError(payload?.error?.message ?? `Erreur ${response.status}`, {
+      code: payload?.error?.code,
+      canRetryManually: payload?.error?.canRetryManually,
+      status: response.status,
+    });
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  let result: ImportResult | null = null;
+
+  const handle = (line: string) => {
+    if (!line.trim()) return;
+    const message = JSON.parse(line) as
+      | { type: 'steps'; steps: ImportStep[] }
+      | { type: 'result'; result: ImportResult }
+      | { type: 'error'; error: { code: string; message: string; canRetryManually: boolean } };
+
+    if (message.type === 'steps') onSteps(message.steps);
+    else if (message.type === 'result') result = message.result;
+    else throw new ApiError(message.error.message, message.error);
+  };
+
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      lines.forEach(handle);
+    }
+    handle(buffer);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError("La connexion au serveur s'est coupée pendant l'import.", {
+      code: 'NETWORK',
+      canRetryManually: true,
+    });
+  }
+
+  if (!result) {
+    throw new ApiError("Le serveur n'a pas renvoyé de résultat.", {
+      code: 'UNKNOWN',
+      canRetryManually: true,
+    });
+  }
+  return result;
+}
+
 // --- Import ---
 
 export const api = {
@@ -110,6 +192,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ url }),
     }),
+
+  /** Même import, avec la progression réelle au fil de l'eau. */
+  importStream: (url: string, onSteps: (steps: ImportStep[]) => void) =>
+    streamImport('/import', { url }, onSteps),
+
+  importManualStream: (
+    input: { text: string; url?: string; importId?: string },
+    onSteps: (steps: ImportStep[]) => void,
+  ) => streamImport('/import/manual', input, onSteps),
 
   /** Reprise manuelle quand la source est inaccessible. */
   importManual: (input: {

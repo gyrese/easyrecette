@@ -3,7 +3,13 @@ import { currentUserId } from '../middleware/auth.js';
 import { createImportSchema, manualImportSchema } from '../schemas/import.js';
 import { PLATFORM_LABELS } from '../schemas/recipe.js';
 import { cleanUrl, detectPlatform } from '../services/importers/index.js';
-import { getImport, runImport, runManualImport } from '../services/importPipeline.js';
+import {
+  getImport,
+  runImport,
+  runManualImport,
+  type ImportResult,
+  type ProgressListener,
+} from '../services/importPipeline.js';
 import { isAiConfigured } from '../services/recipeAI/index.js';
 import { appError } from '../utils/errors.js';
 
@@ -15,6 +21,55 @@ import { appError } from '../utils/errors.js';
  * a bien abouti — c'est l'import qui n'a pas pu se faire, et le client a
  * besoin du journal d'étapes pour afficher où ça a bloqué.
  */
+
+/**
+ * Répond en JSON classique, ou — avec `?stream=1` — en NDJSON : une ligne
+ * `{"type":"steps"}` à chaque étape franchie, puis une ligne
+ * `{"type":"result"}`. Un import vidéo dure parfois une minute ; sans ce
+ * flux, le client n'a rien de réel à montrer entre le clic et la fin.
+ *
+ * Les erreurs de validation, d'authentification et de quota sont levées
+ * AVANT l'ouverture du flux : elles gardent leur code HTTP habituel.
+ */
+async function respond(
+  req: Request,
+  res: Response,
+  run: (onProgress?: ProgressListener) => Promise<ImportResult>,
+): Promise<void> {
+  if (req.query['stream'] !== '1') {
+    res.status(200).json(await run());
+    return;
+  }
+
+  res.status(200);
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  // Désactive la mise en tampon de nginx, qui retiendrait les lignes.
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (payload: unknown) => {
+    if (!res.writableEnded) res.write(`${JSON.stringify(payload)}\n`);
+  };
+
+  try {
+    const result = await run((steps) => send({ type: 'steps', steps }));
+    send({ type: 'result', result });
+  } catch (error) {
+    // Les en-têtes sont partis : plus question de passer par errorHandler.
+    console.error('[import] erreur pendant le flux', error);
+    send({
+      type: 'error',
+      error: {
+        code: 'INTERNAL',
+        message: "L'import s'est interrompu de façon inattendue.",
+        canRetryManually: true,
+      },
+    });
+  } finally {
+    res.end();
+  }
+}
 
 /** Détection côté client, dès le collage de l'URL. */
 export function detect(req: Request, res: Response): void {
@@ -51,9 +106,7 @@ export async function create(req: Request, res: Response): Promise<void> {
   }
 
   const userId = currentUserId(req);
-  const result = await runImport(userId, parsed.data.url);
-
-  res.status(200).json(result);
+  await respond(req, res, (onProgress) => runImport(userId, parsed.data.url, onProgress));
 }
 
 export async function manual(req: Request, res: Response): Promise<void> {
@@ -68,9 +121,9 @@ export async function manual(req: Request, res: Response): Promise<void> {
 
   const userId = currentUserId(req);
   const existingId = typeof req.body?.importId === 'string' ? req.body.importId : undefined;
-  const result = await runManualImport(userId, parsed.data, existingId);
-
-  res.status(200).json(result);
+  await respond(req, res, (onProgress) =>
+    runManualImport(userId, parsed.data, existingId, onProgress),
+  );
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {

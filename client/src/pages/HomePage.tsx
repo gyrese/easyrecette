@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  IconCopy,
   IconFacebook,
   IconGlobe,
   IconInstagram,
@@ -9,15 +10,17 @@ import {
   IconTikTok,
   IconYouTube,
 } from '../components/Icons';
+import { CookingProgress } from '../components/CookingProgress';
 import { ImportNotes, ImportProgress } from '../components/ImportProgress';
 import { RecipeCard } from '../components/RecipeCard';
-import { Button, ErrorPanel, FadeIn, Label, Textarea } from '../components/ui';
+import { Button, ErrorPanel, FadeIn, Textarea } from '../components/ui';
 import { RecipePreview } from '../components/RecipePreview';
 import { ApiError, api } from '../lib/api';
 import type {
   DetectResult,
   GeneratedRecipe,
   ImportResult,
+  ImportStep,
   Platform,
   Recipe,
 } from '../lib/types';
@@ -59,6 +62,15 @@ const SUPPORTED: Array<{ platform: Platform; label: string }> = [
   { platform: 'youtube', label: 'YouTube' },
   { platform: 'web', label: 'Web' },
 ];
+
+/**
+ * Pause sur l'assiette servie avant d'ouvrir la prévisualisation : sans
+ * elle, la cloche se soulèverait sur un écran déjà remplacé.
+ */
+const SERVE_DELAY_MS = 1900;
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Nombre de fiches montrées sous l'affiche, comme dans la maquette. */
 const RECENT_COUNT = 4;
@@ -134,6 +146,18 @@ function RecentRecipes() {
   );
 }
 
+/** Pastille d'état de la console : un voyant et un mot, lisibles d'un coup d'œil. */
+function StatusChip({ tone, label }: { tone: 'ready' | 'busy' | 'error'; label: string }) {
+  const dot =
+    tone === 'ready' ? 'bg-lime' : tone === 'busy' ? 'animate-er-blink-fast bg-ember' : 'bg-[#ff8a65]';
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-paper/20 px-3 py-1 font-mono text-[11px] tracking-[0.14em] text-paper/85 uppercase">
+      <span className={`size-2 rounded-full ${dot}`} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 export function HomePage() {
   const navigate = useNavigate();
 
@@ -143,6 +167,8 @@ export function HomePage() {
   const [manualText, setManualText] = useState('');
   const [manualError, setManualError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Journal reçu en flux pendant l'import en cours. */
+  const [liveSteps, setLiveSteps] = useState<ImportStep[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
@@ -200,16 +226,12 @@ export function HomePage() {
     const trimmed = url.trim();
     if (!trimmed || phase.name === 'importing') return;
 
+    setLiveSteps([]);
     setPhase({ name: 'importing' });
 
     try {
-      const result = await api.import(trimmed);
-
-      if (result.status === 'ready' && result.recipe) {
-        setPhase({ name: 'preview', result, recipe: result.recipe });
-      } else {
-        setPhase({ name: 'failed', result });
-      }
+      const result = await api.importStream(trimmed, setLiveSteps);
+      await settle(result);
     } catch (error) {
       // Erreur transport (rate limit, serveur coupé) : pas d'ImportResult.
       const apiError = error instanceof ApiError ? error : null;
@@ -237,25 +259,39 @@ export function HomePage() {
     if (phase.name !== 'manual') return;
 
     setManualError(null);
+    setLiveSteps([]);
     setPhase({ name: 'importing' });
+    consoleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     try {
-      const result = await api.importManual({
-        text: manualText,
-        url: phase.url || undefined,
-        importId: phase.importId ?? undefined,
-      });
-
-      if (result.status === 'ready' && result.recipe) {
-        setPhase({ name: 'preview', result, recipe: result.recipe });
-      } else {
-        setPhase({ name: 'failed', result });
-      }
+      const result = await api.importManualStream(
+        {
+          text: manualText,
+          url: phase.url || undefined,
+          importId: phase.importId ?? undefined,
+        },
+        setLiveSteps,
+      );
+      await settle(result);
     } catch (error) {
       const message =
         error instanceof ApiError ? error.message : 'Une erreur inattendue est survenue.';
       setManualError(message);
       setPhase({ name: 'manual', url: phase.url, importId: phase.importId, reason: phase.reason });
+    }
+  }
+
+  /** Laisse la cuisine servir l'assiette, puis passe à la suite. */
+  async function settle(result: ImportResult) {
+    setLiveSteps(result.steps);
+
+    if (result.status === 'ready' && result.recipe) {
+      if (!prefersReducedMotion()) {
+        await new Promise((resolve) => setTimeout(resolve, SERVE_DELAY_MS));
+      }
+      setPhase({ name: 'preview', result, recipe: result.recipe });
+    } else {
+      setPhase({ name: 'failed', result });
     }
   }
 
@@ -315,6 +351,7 @@ export function HomePage() {
 
   const DetectedIcon = detection?.platform ? PLATFORM_ICONS[detection.platform] : IconLink;
   const busy = phase.name === 'importing';
+  const canSubmit = Boolean(url.trim()) && detection?.valid !== false;
 
   return (
     <div className="mx-auto max-w-[1320px] px-4 pt-12 pb-16 sm:px-6 sm:pt-14">
@@ -358,125 +395,139 @@ export function HomePage() {
           <div
             ref={consoleRef}
             onMouseMove={trackGlow}
-            className="relative rounded-card border-[1.5px] border-ink bg-ink p-5.5 text-paper shadow-[9px_9px_0_rgb(23_20_15/0.14)]"
+            className="relative scroll-mt-24 rounded-card border-[1.5px] border-ink bg-ink p-5 text-paper shadow-[9px_9px_0_rgb(23_20_15/0.14)] sm:p-6.5"
           >
             {/* Halo qui suit le curseur : la console « chauffe » sous la main. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 rounded-card bg-[radial-gradient(420px_circle_at_var(--mx,70%)_var(--my,10%),rgb(216_242_80/0.14),transparent_62%)]"
+              className="pointer-events-none absolute inset-0 rounded-card bg-[radial-gradient(420px_circle_at_var(--mx,70%)_var(--my,10%),rgb(216_242_80/0.1),transparent_62%)]"
             />
 
             <div className="relative flex items-center justify-between gap-3">
-              <Label className="text-paper/50">Console d'import</Label>
-              <Label className="text-paper/50">
-                {busy ? 'Analyse…' : detection?.valid === false ? 'Lien invalide' : 'Prêt'}
-              </Label>
+              <h2 className="font-sans text-[17px] font-medium tracking-normal text-paper">
+                Importer une recette
+              </h2>
+              <StatusChip
+                tone={busy ? 'busy' : detection?.valid === false ? 'error' : 'ready'}
+                label={busy ? 'En cuisine' : detection?.valid === false ? 'Lien invalide' : 'Prêt'}
+              />
             </div>
 
-            <form onSubmit={runImport}>
-              <div className="relative mt-4 flex h-14 items-center gap-2.5 rounded-control border-[1.5px] border-paper/28 bg-paper/5 pr-1 pl-3.5">
-                <span className="shrink-0 text-lime" aria-hidden="true">
-                  {detection?.platform ? (
-                    <DetectedIcon className="text-base" />
-                  ) : (
-                    <span className="animate-er-blink font-mono text-[13px]">▌</span>
-                  )}
-                </span>
+            {busy ? (
+              <div className="relative mt-5">
+                {url.trim() && (
+                  <p className="mb-5 flex items-center gap-2 truncate font-mono text-[12px] text-paper/60">
+                    <DetectedIcon className="shrink-0 text-sm text-lime" />
+                    <span className="truncate">{url.trim()}</span>
+                  </p>
+                )}
+                <CookingProgress steps={liveSteps} />
+              </div>
+            ) : (
+              <form onSubmit={runImport} className="relative">
+                <label htmlFor="import-url" className="mt-4 block text-[14px] text-paper/75">
+                  Collez le lien d'une vidéo ou d'une page de recette
+                </label>
 
-                <input
-                  ref={inputRef}
-                  type="url"
-                  inputMode="url"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  onFocus={() => url === '' && void pasteFromClipboard()}
-                  placeholder="coller un lien tiktok / instagram / youtube…"
-                  disabled={busy}
-                  aria-label="Lien de la vidéo ou de l'article à importer"
-                  className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-paper placeholder:text-paper/40 focus:outline-none disabled:opacity-60"
-                />
+                <div className="mt-2.5 flex h-15 items-center gap-3 rounded-control border-[1.5px] border-paper/35 bg-paper/6 pr-1.5 pl-4 transition-colors focus-within:border-lime">
+                  <span className="shrink-0" aria-hidden="true">
+                    {detection?.platform ? (
+                      <DetectedIcon className="text-lg text-lime" />
+                    ) : (
+                      <IconLink className="text-lg text-paper/55" />
+                    )}
+                  </span>
+
+                  <input
+                    id="import-url"
+                    ref={inputRef}
+                    type="url"
+                    inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    onFocus={() => url === '' && void pasteFromClipboard()}
+                    placeholder="https://…"
+                    className="w-0 min-w-0 flex-1 bg-transparent font-mono text-[16px] text-paper placeholder:text-paper/40 focus:outline-none"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => void pasteFromClipboard()}
+                    aria-label="Coller depuis le presse-papiers"
+                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-control border-[1.5px] border-paper/35 px-3.5 font-mono text-[12px] tracking-[0.1em] text-paper/85 uppercase transition-colors hover:border-lime hover:bg-lime hover:text-ink focus-visible:outline-lime"
+                  >
+                    <IconCopy className="text-sm" />
+                    Coller
+                  </button>
+                </div>
+
+                {/* Source détectée : confirmation immédiate, sous le champ. */}
+                <p className="mt-2.5 min-h-5 text-[13px]" aria-live="polite">
+                  {detection && url.trim() ? (
+                    detection.valid ? (
+                      <span className="text-lime">✓ Lien {detection.label} reconnu</span>
+                    ) : (
+                      <span className="text-[#ff8a65]">
+                        Cette adresse ne ressemble pas à un lien valide.
+                      </span>
+                    )
+                  ) : null}
+                </p>
 
                 <button
-                  type="button"
-                  onClick={() => void pasteFromClipboard()}
-                  aria-label="Coller depuis le presse-papiers"
-                  className="shrink-0 rounded-control border-[1.5px] border-paper/30 px-3 py-2 font-mono text-[10px] tracking-[0.14em] text-paper/65 uppercase transition-colors hover:border-lime hover:bg-lime hover:text-ink"
+                  type="submit"
+                  disabled={!canSubmit}
+                  className={`mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-control border-[1.5px] font-mono text-[14px] font-medium tracking-[0.16em] uppercase transition-colors focus-visible:outline-lime ${
+                    canSubmit
+                      ? 'sheen border-ember bg-ember text-ember-ink hover:bg-[#e4552d]'
+                      : 'cursor-not-allowed border-paper/20 bg-paper/6 text-paper/55'
+                  }`}
                 >
-                  ⌘V
+                  Extraire la recette →
                 </button>
-              </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={busy}
-                disabled={!url.trim() || detection?.valid === false}
-                className="sheen mt-3 w-full"
-              >
-                {busy ? 'Extraction…' : 'Extraire la recette →'}
-              </Button>
-            </form>
-
-            {/* Plateformes reconnues — repliées dès qu'on travaille. */}
-            {phase.name === 'idle' && (
-              <div className="relative mt-4.5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t-[1.5px] border-dashed border-paper/22 pt-4">
-                {SUPPORTED.map(({ platform, label }) => {
-                  const Icon = PLATFORM_ICONS[platform];
-                  const active = detection?.platform === platform;
-                  return (
-                    <span
-                      key={platform}
-                      className={`label-mono-sm inline-flex items-center gap-1.5 transition-colors ${
-                        active ? 'text-lime' : 'text-paper/45'
-                      }`}
-                    >
-                      <Icon className="text-sm" />
-                      {label}
-                    </span>
-                  );
-                })}
-              </div>
+                {/* Plateformes reconnues */}
+                <div className="mt-5 border-t-[1.5px] border-dashed border-paper/20 pt-4">
+                  <p className="text-[13px] text-paper/60">Fonctionne avec</p>
+                  <ul className="mt-2.5 flex flex-wrap gap-2">
+                    {SUPPORTED.map(({ platform, label }) => {
+                      const Icon = PLATFORM_ICONS[platform];
+                      const active = detection?.platform === platform;
+                      return (
+                        <li
+                          key={platform}
+                          className={`inline-flex items-center gap-1.5 rounded-control border-[1.5px] px-2.5 py-1.5 text-[13px] transition-colors ${
+                            active ? 'border-lime bg-lime text-ink' : 'border-paper/20 text-paper/80'
+                          }`}
+                        >
+                          <Icon className="text-sm" />
+                          {label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </form>
             )}
 
-            {/* Relevé de progression, dans la console elle-même. */}
+            {/* Échec : où ça a coincé, et comment reprendre. */}
             <AnimatePresence>
-              {(busy || phase.name === 'failed') && (
+              {phase.name === 'failed' && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="relative overflow-hidden"
                 >
-                  <div className="relative mt-4.5 overflow-hidden border-t-[1.5px] border-dashed border-paper/22 pt-4">
-                    {/* Le balayage d'analyse : une bande de lumière verte qui
-                        traverse le relevé tant que la machine travaille. Elle
-                        s'éteint en fondu plutôt que de disparaître d'un coup,
-                        pour que la fin de l'import se lise comme un arrêt et
-                        non comme une coupure. */}
-                    <div
-                      aria-hidden="true"
-                      className={`animate-er-scan pointer-events-none absolute inset-x-0 top-0 h-[22%] bg-[linear-gradient(to_bottom,transparent,rgb(216_242_80/0.16),transparent)] transition-opacity duration-[400ms] ${
-                        busy ? 'opacity-100' : 'opacity-0'
-                      }`}
-                    />
-
-                    {/* `relative` pour passer au-dessus du balayage : le relevé
-                        doit rester lisible pendant que la bande le traverse. */}
-                    <div className="relative">
-                      <ImportProgress
-                        steps={phase.name === 'failed' ? phase.result.steps : []}
-                        pending={busy}
-                        onDark
-                      />
-                    </div>
-
-                    {phase.name === 'failed' && phase.result.error && (
-                      <div className="mt-4 border-l-[3px] border-ember bg-ember/10 px-3.5 py-3">
-                        <p className="label-mono-sm text-ember">L'import n'a pas abouti</p>
-                        <p className="mt-1.5 text-sm leading-relaxed text-paper/70">
+                  <div className="mt-5 border-t-[1.5px] border-dashed border-paper/20 pt-5">
+                    {phase.result.error && (
+                      <div className="mb-5 border-l-[3px] border-ember bg-ember/12 px-4 py-3.5">
+                        <p className="text-[15px] font-medium text-[#ff8a65]">
+                          L'import n'a pas abouti
+                        </p>
+                        <p className="mt-1.5 text-[14px] leading-relaxed text-paper/80">
                           {phase.result.error.message}
                         </p>
                         <div className="mt-3.5 flex flex-wrap gap-2">
@@ -492,7 +543,7 @@ export function HomePage() {
                           <button
                             type="button"
                             onClick={reset}
-                            className="label-mono-sm rounded-control border-[1.5px] border-paper/30 px-3 text-paper/65 transition-colors hover:border-paper hover:text-paper"
+                            className="label-mono-sm min-h-11 rounded-control border-[1.5px] border-paper/35 px-3.5 text-paper/80 transition-colors hover:border-paper hover:text-paper"
                           >
                             Autre lien
                           </button>
@@ -500,28 +551,12 @@ export function HomePage() {
                       </div>
                     )}
 
-                    {phase.name === 'failed' && <ImportNotes notes={phase.result.notes} onDark />}
+                    {phase.result.steps.length > 0 && (
+                      <ImportProgress steps={phase.result.steps} onDark />
+                    )}
+                    <ImportNotes notes={phase.result.notes} onDark />
                   </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Source détectée : confirmation discrète, en bas de console. */}
-            <AnimatePresence>
-              {detection && url.trim() && phase.name === 'idle' && (
-                <motion.p
-                  key={detection.platform ?? 'invalid'}
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="label-mono-sm relative mt-3.5"
-                >
-                  {detection.valid ? (
-                    <span className="text-lime">Source · {detection.label}</span>
-                  ) : (
-                    <span className="text-ember">Adresse non valide</span>
-                  )}
-                </motion.p>
               )}
             </AnimatePresence>
           </div>

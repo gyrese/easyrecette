@@ -40,8 +40,17 @@ function initialSteps(): ImportStep[] {
   }));
 }
 
+/** Rappelé à chaque changement du journal, pour le streamer au client. */
+export type ProgressListener = (steps: ImportStep[]) => void;
+
 class StepTracker {
   private steps: ImportStep[] = initialSteps();
+
+  constructor(private readonly onChange?: ProgressListener) {}
+
+  private emit(): void {
+    this.onChange?.(this.snapshot());
+  }
 
   mark(key: ImportStepKey, status: ImportStep['status'], detail?: string | null): void {
     const step = this.steps.find((candidate) => candidate.key === key);
@@ -49,6 +58,7 @@ class StepTracker {
     step.status = status;
     step.detail = detail ?? null;
     step.at = new Date().toISOString();
+    this.emit();
   }
 
   /** Marque échouée l'étape en cours et laisse les suivantes en attente. */
@@ -59,6 +69,7 @@ class StepTracker {
       target.status = 'failed';
       target.detail = detail.slice(0, 200);
       target.at = new Date().toISOString();
+      this.emit();
     }
   }
 
@@ -90,10 +101,14 @@ export interface ImportResult {
  * file d'attente ne se justifie pas. L'Import est créé en base dès le départ,
  * donc rien n'est perdu si le client coupe la connexion.
  */
-export async function runImport(userId: string, rawUrl: string): Promise<ImportResult> {
+export async function runImport(
+  userId: string,
+  rawUrl: string,
+  onProgress?: ProgressListener,
+): Promise<ImportResult> {
   const url = cleanUrl(rawUrl);
   const platform = detectPlatform(url);
-  const tracker = new StepTracker();
+  const tracker = new StepTracker(onProgress);
 
   const record = await prisma.import.create({
     data: {
@@ -236,10 +251,11 @@ export async function runManualImport(
   userId: string,
   input: ManualImportInput,
   existingImportId?: string,
+  onProgress?: ProgressListener,
 ): Promise<ImportResult> {
   const url = input.url ? cleanUrl(input.url) : '';
   const platform: Platform = input.platform ?? (url ? detectPlatform(url) : 'manual');
-  const tracker = new StepTracker();
+  const tracker = new StepTracker(onProgress);
 
   // `sourceUrl` reste une chaîne vide quand l'utilisateur n'a pas fourni de
   // lien : ce champ alimente `source.url`, qui doit être une vraie URL ou
@@ -397,6 +413,10 @@ async function failImport(
 
   if (!isAppError(error)) {
     console.error('[import] erreur inattendue', error);
+  } else if (appErr.detail) {
+    // Le message montré à l'utilisateur reste générique ; la cause réelle
+    // (quota, modèle retiré, clé refusée…) doit au moins atteindre les logs.
+    console.warn(`[import] ${appErr.code} : ${appErr.detail}`);
   }
 
   tracker.failCurrent(appErr.message);
