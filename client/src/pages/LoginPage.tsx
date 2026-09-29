@@ -41,20 +41,21 @@ function useIsDesktop(): boolean {
 }
 
 /**
- * La boucle d'accueil (video/hero-loop, composée avec HyperFrames) : une vidéo
- * de cuisine devient une fiche. Muette et décorative — la page dit la même
- * chose en mots. Sans animation souhaitée, on s'en tient au poster, qui montre
- * la fiche finie. Rendue à un seul endroit à la fois (voir `useIsDesktop`) :
- * une copie masquée en CSS continuerait de se télécharger et de tourner.
+ * Le reel d'accueil (video/reel, composé avec HyperFrames) : en trois étapes
+ * sous-titrées, une recette vue en vidéo devient une fiche. Vertical comme un
+ * reel, pour se lire sur un téléphone sans le son. Muet et décoratif — la
+ * page dit la même chose en mots. Sans animation souhaitée, on s'en tient au
+ * poster, qui montre la fiche finie. Rendu à un seul endroit à la fois (voir
+ * `useIsDesktop`) : une copie masquée en CSS continuerait de se télécharger.
  */
 function HeroLoop({ autoPlay, className = '' }: { autoPlay: boolean; className?: string }) {
   return (
     <figure
-      className={`overflow-hidden rounded-card border-[1.5px] border-rule-strong bg-paper shadow-hero ${className}`}
+      className={`mx-auto w-full max-w-[380px] overflow-hidden rounded-[22px] border-[1.5px] border-rule-strong bg-ink shadow-hero ${className}`}
     >
       <video
-        className="block aspect-video w-full"
-        poster="/video/hero-loop-poster.webp"
+        className="block aspect-[9/16] w-full"
+        poster="/video/reel-poster.webp"
         autoPlay={autoPlay}
         loop
         muted
@@ -62,8 +63,8 @@ function HeroLoop({ autoPlay, className = '' }: { autoPlay: boolean; className?:
         preload="metadata"
         aria-hidden="true"
       >
-        <source src="/video/hero-loop.webm" type="video/webm" />
-        <source src="/video/hero-loop.mp4" type="video/mp4" />
+        <source src="/video/reel.webm" type="video/webm" />
+        <source src="/video/reel.mp4" type="video/mp4" />
       </video>
     </figure>
   );
