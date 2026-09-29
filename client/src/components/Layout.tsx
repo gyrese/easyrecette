@@ -129,9 +129,9 @@ export function Layout() {
         <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-[18px] px-4 py-3 sm:px-6">
           <NavLink to="/" className="group mr-1.5 flex items-baseline gap-[9px] text-ink hover:text-ink">
             <span className="font-display text-[27px] leading-none tracking-[-0.02em]">
-              Easy
+              Passe
               <span className="italic transition-colors duration-300 group-hover:text-ember">
-                Recette
+                Plat
               </span>
             </span>
             <span className="hidden font-mono text-[9.5px] font-normal tracking-[0.2em] text-ink-faint uppercase sm:inline">

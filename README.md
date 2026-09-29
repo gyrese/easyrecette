@@ -1,4 +1,6 @@
-# CookBook
+# PassePlat
+
+**De la vidéo à l'assiette.**
 
 Colle un lien TikTok, Instagram, YouTube ou un article de blog, et obtiens une
 fiche recette structurée dans ta bibliothèque.

@@ -106,7 +106,7 @@ async function start(): Promise<void> {
   if (toOptimize > 0) console.log(`  ${toOptimize} fiche(s) aux médias à optimiser`);
 
   const server = app.listen(config.port, () => {
-    console.log(`\n  CookBook API  →  http://localhost:${config.port}/api`);
+    console.log(`\n  PassePlat API  →  http://localhost:${config.port}/api`);
     console.log(`  Environnement : ${config.env}`);
     console.log(
       `  IA            : ${

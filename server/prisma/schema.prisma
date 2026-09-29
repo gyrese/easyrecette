@@ -1,4 +1,4 @@
-// CookBook — schéma de données
+// PassePlat — schéma de données
 //
 // Provider: SQLite pour le développement local (zéro installation).
 // La migration vers PostgreSQL ne demande que de changer `provider` et `url`

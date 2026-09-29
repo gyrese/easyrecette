@@ -384,7 +384,7 @@ export function HomePage() {
 
           <FadeIn delay={0.3}>
             <p className="mt-6.5 max-w-[430px] text-base leading-[1.6] text-ink-soft">
-              Collez une URL. EasyRecette lit la vidéo, isole les ingrédients, ajuste les
+              Collez une URL. PassePlat lit la vidéo, isole les ingrédients, ajuste les
               portions et imprime votre plan de cuisson.
             </p>
           </FadeIn>

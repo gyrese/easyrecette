@@ -1,6 +1,6 @@
 # Déploiement Docker sur VPS
 
-EasyRecette tourne en trois conteneurs :
+PassePlat tourne en trois conteneurs :
 
 | Conteneur | Rôle |
 | --- | --- |

@@ -11,10 +11,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'EasyRecette — toute vidéo devient une fiche cuisine',
-        short_name: 'EasyRecette',
+        name: "PassePlat — de la vidéo à l'assiette",
+        short_name: 'PassePlat',
         description:
-          "Transforme n'importe quelle vidéo ou article en recette structurée, et garde toute ta cuisine au même endroit.",
+          "PassePlat transforme n'importe quelle vidéo ou article en recette structurée, prête à cuisiner.",
         lang: 'fr',
         start_url: '/',
         scope: '/',

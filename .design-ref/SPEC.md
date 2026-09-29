@@ -1,4 +1,4 @@
-# EasyRecette — spécification exacte de l'artifact
+# PassePlat — spécification exacte de l'artifact
 
 Source : `artifact-markup.html` (le DOM rendu) et `artifact-logic.js` (les styles calculés).
 Toute valeur ci-dessous est **relevée** dans ces deux fichiers, pas inventée.

@@ -1,7 +1,7 @@
 # Avatars Pets
 
 Première pose de Pets publiés sur [Petdex](https://petdex.dev), recadrée et
-compressée en WebP pour l'affichage dans EasyRecette. Ce sont des créations de
+compressée en WebP pour l'affichage dans PassePlat. Ce sont des créations de
 leurs auteurs, créditées ici et sur la page du compte.
 
 - `boba.webp` — Boba par railly

@@ -11,7 +11,7 @@ length: 12s
 
 ## Intent
 
-Boucle muette de ~12 s pour la page de connexion d'EasyRecette : une vidéo de
+Boucle muette de ~12 s pour la page de connexion de PassePlat : une vidéo de
 cuisine est scannée, les ingrédients en sortent en petites fiches, et
 s'assemblent en une grande fiche cartonnée « Crêpes du dimanche ». La dernière
 image rejoint la première pour une boucle sans couture. Éditorial, sûr de lui :

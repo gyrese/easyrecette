@@ -174,7 +174,7 @@ export function ShoppingListPage() {
         <EmptyState
           icon={<IconCart />}
           title="Aucune course en attente"
-          description="Ajoutez les ingrédients d'une fiche : EasyRecette fusionne les doublons et range tout par rayon."
+          description="Ajoutez les ingrédients d'une fiche : PassePlat fusionne les doublons et range tout par rayon."
           action={
             <Link to="/recipes">
               <Button variant="secondary">Partir d'une fiche</Button>

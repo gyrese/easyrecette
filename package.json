@@ -2,7 +2,7 @@
   "name": "cookbook",
   "private": true,
   "version": "0.1.0",
-  "description": "Transforme n'importe quelle vidéo ou article en recette structurée",
+  "description": "PassePlat — de la vidéo à l'assiette",
   "type": "module",
   "workspaces": [
     "server",
